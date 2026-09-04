@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1160" viewBox="0 0 1600 1160" role="img" aria-labelledby="title description">
+  <title id="title">Passo a passo do calculo de economia solar</title>
+  <desc id="description">Fluxo detalhado do calculo usando uma conta de energia de 520 reais e parametros configurados pelo administrador.</desc>
+  <defs>
+    <style>
+      .bg { fill: #f5f7fb; }
+      .heading { fill: #132238; font: 700 34px Arial, Helvetica, sans-serif; }
+      .subheading { fill: #5b6b82; font: 400 18px Arial, Helvetica, sans-serif; }
+      .step { fill: #163d7a; font: 700 15px Arial, Helvetica, sans-serif; letter-spacing: 1px; }
+      .box-title { fill: #132238; font: 700 22px Arial, Helvetica, sans-serif; }
+      .copy { fill: #5b6b82; font: 400 17px Arial, Helvetica, sans-serif; }
+      .formula { fill: #163d7a; font: 700 18px Arial, Helvetica, sans-serif; }
+      .answer { fill: #0f704c; font: 700 20px Arial, Helvetica, sans-serif; }
+      .settings-title { fill: #ffffff; font: 700 20px Arial, Helvetica, sans-serif; }
+      .settings-copy { fill: #e7f7ef; font: 400 16px Arial, Helvetica, sans-serif; }
+      .box { fill: #ffffff; stroke: #dfe7f4; stroke-width: 2; }
+      .input { fill: #dfeaff; stroke: #163d7a; stroke-width: 2; }
+      .result { fill: #e7f7ef; stroke: #0f9d68; stroke-width: 2; }
+      .line { fill: none; stroke: #5b6b82; stroke-width: 3; marker-end: url(#arrow); }
+    </style>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#5b6b82" />
+    </marker>
+  </defs>
+
+  <rect class="bg" width="1600" height="1160" />
+  <text class="heading" x="80" y="68">Passo a passo da simulacao de economia de energia</text>
+  <text class="subheading" x="80" y="102">Exemplo com conta mensal de R$ 520,00 e configuracoes padrao do painel administrativo.</text>
+
+  <rect x="1050" y="145" width="450" height="285" rx="8" fill="#163d7a" />
+  <text class="settings-title" x="1080" y="190">Parametros configurados pelo administrador</text>
+  <text class="settings-copy" x="1080" y="230">Tarifa media: R$ 1,70 por kWh</text>
+  <text class="settings-copy" x="1080" y="265">Producao media: 1.400 kWh/kWp/ano</text>
+  <text class="settings-copy" x="1080" y="300">Fator de perdas: 0,90</text>
+  <text class="settings-copy" x="1080" y="335">Economia estimada: 35%</text>
+  <text class="settings-copy" x="1080" y="370">Vida util: 25 anos</text>
+  <text class="settings-copy" x="1080" y="405">Custo por kWp: R$ 4.200,00*</text>
+
+  <rect class="input" x="80" y="165" width="760" height="155" rx="8" />
+  <text class="step" x="115" y="205">PASSO 1</text>
+  <text class="box-title" x="115" y="245">Cliente informa o valor medio da conta</text>
+  <text class="formula" x="115" y="285">Valor da conta = R$ 520,00 por mes</text>
+
+  <path class="line" d="M460 320 L460 385" />
+  <rect class="box" x="80" y="385" width="760" height="160" rx="8" />
+  <text class="step" x="115" y="425">PASSO 2</text>
+  <text class="box-title" x="115" y="465">Calcula o consumo mensal estimado</text>
+  <text class="formula" x="115" y="502">Consumo = valor da conta / tarifa media</text>
+  <text class="answer" x="115" y="530">R$ 520,00 / R$ 1,70 = 306 kWh por mes</text>
+
+  <path class="line" d="M460 545 L460 610" />
+  <rect class="box" x="80" y="610" width="760" height="185" rx="8" />
+  <text class="step" x="115" y="650">PASSO 3</text>
+  <text class="box-title" x="115" y="690">Dimensiona a potencia estimada do sistema</text>
+  <text class="formula" x="115" y="727">Potencia = consumo / ((producao anual / 12) x fator de perdas)</text>
+  <text class="answer" x="115" y="755">306 / ((1.400 / 12) x 0,90) = 2,91 kWp</text>
+
+  <path class="line" d="M460 795 L460 860" />
+  <rect class="box" x="80" y="860" width="760" height="180" rx="8" />
+  <text class="step" x="115" y="900">PASSO 4</text>
+  <text class="box-title" x="115" y="940">Calcula a economia mensal, anual e acumulada</text>
+  <text class="formula" x="115" y="977">Economia mensal = conta x percentual de economia</text>
+  <text class="answer" x="115" y="1005">R$ 520,00 x 35% = R$ 182,00 por mes</text>
+  <text class="answer" x="115" y="1030">R$ 182,00 x 12 x 25 anos = R$ 54.600,00 acumulados</text>
+
+  <path class="line" d="M840 950 L1025 950" />
+  <rect class="result" x="1050" y="625" width="450" height="415" rx="8" />
+  <text class="step" x="1085" y="670">RESULTADO PARA O CLIENTE</text>
+  <text class="box-title" x="1085" y="715">Estimativa do projeto solar</text>
+  <text class="copy" x="1085" y="760">Consumo estimado</text>
+  <text class="answer" x="1085" y="790">306 kWh por mes</text>
+  <text class="copy" x="1085" y="835">Potencia indicada</text>
+  <text class="answer" x="1085" y="865">2,91 kWp</text>
+  <text class="copy" x="1085" y="910">Economia mensal estimada</text>
+  <text class="answer" x="1085" y="940">R$ 182,00</text>
+  <text class="copy" x="1085" y="985">Economia acumulada estimada</text>
+  <text class="answer" x="1085" y="1015">R$ 54.600,00</text>
+
+  <text class="subheading" x="80" y="1110">* O custo por kWp e configuravel, mas ainda nao compoe o resultado apresentado ao cliente.</text>
+</svg>

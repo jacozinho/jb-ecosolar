@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Leitor de PDF</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="toolbar">
+        <div class="title-group">
+          <h1>Leitor de PDF</h1>
+        </div>
+        <div class="actions">
+          <label class="button primary" for="pdfInput">Abrir PDF</label>
+          <input id="pdfInput" type="file" accept="application/pdf" />
+          <button id="zoomOut" type="button" class="button">−</button>
+          <button id="zoomIn" type="button" class="button">+</button>
+        </div>
+      </header>
+
+      <main class="viewer-wrap">
+        <iframe
+          id="pdfViewer"
+          title="Visualizador de PDF"
+          src=""
+          loading="lazy"
+        ></iframe>
+      </main>
+    </div>
+
+    <script src="./script.js"></script>
+  </body>
+</html>
