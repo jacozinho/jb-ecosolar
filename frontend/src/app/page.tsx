@@ -151,7 +151,7 @@ export default function Home() {
                   </div>
                 </div>
                 <details className="payment-estimate">
-                  <summary>Resultado do pagamento</summary>
+                  <summary>Outros detalhes da Simulação</summary>
                   {resultadoExibido.prazo_pagamento === prazoPagamento ? (
                     <p className="payment-selected">
                       {prazoPagamento === 0 ? "Valor estimado à vista" : `Parcela estimada em ${prazoPagamento}x`}: R$ {resultadoExibido.valor_pagamento_estimado.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
