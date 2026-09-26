@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api, type Dashboard, type SimulationResult } from "@/lib/api";
+import { api, type Dashboard, type FinancingOption, type SimulationResult } from "@/lib/api";
 
 export default function Home() {
   const [valorConta, setValorConta] = useState(520);
@@ -13,10 +13,16 @@ export default function Home() {
     potencia_kwp: 2.91,
     investimento_estimado: 12222,
     consumo_estimado: 306,
-    prazo_pagamento: 12,
-    valor_pagamento_estimado: 1018.5,
+    prazo_pagamento: 0,
+    financiamento_id: null,
+    financiamento_instituicao: "",
+    taxa_juros_mensal: 0,
+    valor_pagamento_estimado: 12222,
+    valor_total_pagamento_estimado: 12222,
   });
-  const [prazoPagamento, setPrazoPagamento] = useState(12);
+  const [prazoPagamento, setPrazoPagamento] = useState(0);
+  const [opcoesFinanciamento, setOpcoesFinanciamento] = useState<Omit<FinancingOption, "ativa" | "updated_at">[]>([]);
+  const [financiamentoId, setFinanciamentoId] = useState<number | null>(null);
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [notificacao, setNotificacao] = useState("Simulação pronta para análise comercial.");
 
@@ -29,6 +35,15 @@ export default function Home() {
       .catch(() => {
         if (active) setDashboard(null);
       });
+    api.getPublicFinancingOptions()
+      .then((options) => {
+        if (!active) return;
+        setOpcoesFinanciamento(options);
+        setFinanciamentoId(options[0]?.id ?? null);
+      })
+      .catch(() => {
+        if (active) setOpcoesFinanciamento([]);
+      });
 
     return () => {
       active = false;
@@ -36,8 +51,13 @@ export default function Home() {
   }, []);
 
   const handleSimular = async () => {
+    if (prazoPagamento > 0 && financiamentoId === null) {
+      setNotificacao("Selecione uma instituição financiadora para calcular as parcelas.");
+      return;
+    }
+
     try {
-      const { result } = await api.createSimulation(valorConta, prazoPagamento);
+      const { result } = await api.createSimulation(valorConta, prazoPagamento, financiamentoId);
       setResultadoExibido(result);
       api.getPublicDashboard().then(setDashboard).catch(() => setDashboard(null));
       setNotificacao("Simulação concluída com sucesso. O cliente pode solicitar proposta.");
@@ -77,6 +97,28 @@ export default function Home() {
         <section className="metric-bar customer-metrics">
           <div>
             <span>Simulações</span>
+              {prazoPagamento > 0 && (
+                <div className="financing-selection">
+                  {opcoesFinanciamento.length > 0 ? (
+                    <>
+                      <label htmlFor="financiamento-opcao">Instituição e taxa mensal</label>
+                      <select
+                        id="financiamento-opcao"
+                        value={financiamentoId ?? ""}
+                        onChange={(event) => setFinanciamentoId(event.target.value ? Number(event.target.value) : null)}
+                      >
+                        {opcoesFinanciamento.map((option) => (
+                          <option key={option.id} value={option.id}>
+                            {option.instituicao} — {option.taxa_juros_mensal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}% a.m.
+                          </option>
+                        ))}
+                      </select>
+                    </>
+                  ) : (
+                    <p>Parcelamento indisponível no momento. As opções serão exibidas quando houver taxas cadastradas.</p>
+                  )}
+                </div>
+              )}
             <strong>{dashboard?.totalSimulacoes.toLocaleString("pt-BR") ?? "—"}</strong>
           </div>
           <div>
@@ -127,11 +169,12 @@ export default function Home() {
                         name="prazo-pagamento"
                         value={term}
                         checked={prazoPagamento === term}
+                        disabled={term > 0 && opcoesFinanciamento.length === 0}
                         onChange={() => setPrazoPagamento(term)}
                       />
                       <span>
                         <strong>{label}</strong>
-                        <small>{term === 0 ? "Pagamento único" : "Estimativa sem juros"}</small>
+                        <small>{term === 0 ? "Pagamento único" : opcoesFinanciamento.length > 0 ? "Taxa informada pela instituição" : "Indisponível sem taxa"}</small>
                       </span>
                     </label>
                   );
@@ -166,18 +209,25 @@ export default function Home() {
                   </div>
                 </div>
                 <details className="payment-estimate">
-                  <summary>Outros detalhes da Simulação</summary>
-                  {resultadoExibido.prazo_pagamento === prazoPagamento ? (
+                  <summary>Detalhes da simulação e pagamento</summary>
+                  {resultadoExibido.prazo_pagamento === prazoPagamento && (prazoPagamento === 0 || resultadoExibido.financiamento_id === financiamentoId) ? (
                     <p className="payment-selected">
-                      {prazoPagamento === 0 ? "Valor estimado à vista" : `Parcela estimada em ${prazoPagamento}x`}: R$ {resultadoExibido.valor_pagamento_estimado.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      {prazoPagamento === 0
+                        ? `Valor estimado à vista: R$ ${resultadoExibido.valor_pagamento_estimado.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+                        : `Parcela estimada em ${prazoPagamento}x com ${resultadoExibido.financiamento_instituicao}: R$ ${resultadoExibido.valor_pagamento_estimado.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
                     </p>
                   ) : (
                     <p className="payment-selected" role="status">
                       Opção alterada. Clique em Simular minha economia para recalcular o pagamento.
                     </p>
                   )}
+                  {prazoPagamento > 0 && resultadoExibido.prazo_pagamento === prazoPagamento && resultadoExibido.financiamento_id === financiamentoId && (
+                    <p className="payment-total">
+                      Taxa usada: {resultadoExibido.taxa_juros_mensal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}% a.m. · Total estimado: R$ {resultadoExibido.valor_total_pagamento_estimado.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                    </p>
+                  )}
                   <p className="payment-disclaimer">
-                    Parcelamento apenas como referência matemática, sem juros ou taxas. Condições reais dependem da análise de crédito e da proposta comercial.
+                    A taxa é informada manualmente pelo administrador com base nos dados fornecidos pela instituição; não há integração bancária. Esta estimativa aplica juros compostos mensais e não necessariamente representa o CET: pode excluir IOF, tarifas, entrada e outras condições. Confirme a proposta, a taxa vigente e a aprovação diretamente com a instituição antes de contratar.
                   </p>
                   <details className="simulation-methodology">
                     <summary>Como calculamos esta estimativa?</summary>

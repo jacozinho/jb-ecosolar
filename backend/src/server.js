@@ -5,12 +5,16 @@ import dotenv from 'dotenv';
 import {
   calculateSimulation,
   createLead,
+  criarOpcaoFinanciamento,
   createSimulation,
+  excluirOpcaoFinanciamento,
   getConfiguracoes,
   getDashboard,
   getLeads,
+  getOpcoesFinanciamento,
   isDatabaseHealthy,
   initDb,
+  atualizarOpcaoFinanciamento,
   updateConfiguracao,
   updateLeadStatus,
 } from './db.js';
@@ -127,6 +131,14 @@ function validateFinitePositive(value, field) {
   return null;
 }
 
+function validateFinancingOption(payload) {
+  if (!isNonEmptyString(payload.instituicao, 120)) return 'Informe o nome da instituição financiadora.';
+  if (typeof payload.taxa_juros_mensal !== 'number' || !Number.isFinite(payload.taxa_juros_mensal) || payload.taxa_juros_mensal < 0 || payload.taxa_juros_mensal > 100) {
+    return 'A taxa mensal deve ser um número entre 0 e 100%.';
+  }
+  return null;
+}
+
 function safeEqual(left, right) {
   const leftBuffer = Buffer.from(left);
   const rightBuffer = Buffer.from(right);
@@ -221,11 +233,19 @@ app.post('/api/simulacoes', asyncHandler(async (req, res) => {
     const input = req.body || {};
     const validationError = validateFinitePositive(input.valor_conta, 'valor_conta');
     if (validationError) return res.status(400).json({ error: validationError });
-    const prazoPagamento = input.prazo_pagamento ?? 12;
+    const prazoPagamento = input.prazo_pagamento ?? 0;
     if (!validPaymentTerms.has(prazoPagamento)) {
       return res.status(400).json({ error: 'prazo_pagamento deve ser 0, 12, 24 ou 36.' });
     }
-    const result = await calculateSimulation({ ...input, prazo_pagamento: prazoPagamento });
+    let financingOption = null;
+    if (prazoPagamento > 0) {
+      if (!Number.isSafeInteger(input.financiamento_id) || input.financiamento_id <= 0) {
+        return res.status(400).json({ error: 'Selecione uma instituição para simular o parcelamento.' });
+      }
+      financingOption = (await getOpcoesFinanciamento()).find((option) => option.id === input.financiamento_id && option.ativa);
+      if (!financingOption) return res.status(400).json({ error: 'A opção de financiamento selecionada não está disponível.' });
+    }
+    const result = await calculateSimulation({ ...input, prazo_pagamento: prazoPagamento }, financingOption);
     const simulation = await createSimulation({ ...input, ...result });
     let notification = { sent: false, reason: 'not_sent' };
     try {
@@ -261,6 +281,48 @@ app.get('/api/leads', requireAdmin, asyncHandler(async (req, res) => {
 app.get('/api/public/dashboard', asyncHandler(async (req, res) => {
   const { totalSimulacoes, totalLeads, conversao } = await getDashboard();
   return res.json({ totalSimulacoes, totalLeads, conversao });
+}));
+
+app.get('/api/public/financiamentos', asyncHandler(async (req, res) => {
+  const options = await getOpcoesFinanciamento();
+  return res.json(options
+    .filter((option) => option.ativa)
+    .map(({ id, instituicao, taxa_juros_mensal }) => ({ id, instituicao, taxa_juros_mensal })));
+}));
+
+app.get('/api/financiamentos', requireAdmin, asyncHandler(async (req, res) => {
+  return res.json(await getOpcoesFinanciamento());
+}));
+
+app.post('/api/financiamentos', requireAdmin, asyncHandler(async (req, res) => {
+  const input = req.body || {};
+  const validationError = validateFinancingOption(input);
+  if (validationError) return res.status(400).json({ error: validationError });
+  const option = await criarOpcaoFinanciamento({
+    instituicao: input.instituicao.trim(),
+    taxa_juros_mensal: input.taxa_juros_mensal,
+  });
+  return res.status(201).json({ option });
+}));
+
+app.patch('/api/financiamentos/:id', requireAdmin, asyncHandler(async (req, res) => {
+  const input = req.body || {};
+  const validationError = validateFinancingOption(input);
+  if (validationError) return res.status(400).json({ error: validationError });
+  if (typeof input.ativa !== 'boolean') return res.status(400).json({ error: 'Informe se a opção está ativa.' });
+  const option = await atualizarOpcaoFinanciamento(req.params.id, {
+    instituicao: input.instituicao.trim(),
+    taxa_juros_mensal: input.taxa_juros_mensal,
+    ativa: input.ativa,
+  });
+  if (!option) return res.status(404).json({ error: 'Opção de financiamento não encontrada.' });
+  return res.json({ option });
+}));
+
+app.delete('/api/financiamentos/:id', requireAdmin, asyncHandler(async (req, res) => {
+  const deleted = await excluirOpcaoFinanciamento(req.params.id);
+  if (!deleted) return res.status(404).json({ error: 'Opção de financiamento não encontrada.' });
+  return res.sendStatus(204);
 }));
 
 app.patch('/api/leads/:id', requireAdmin, asyncHandler(async (req, res) => {

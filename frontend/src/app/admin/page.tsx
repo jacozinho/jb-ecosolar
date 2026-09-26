@@ -2,11 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { api, type Lead, type SimulatorSetting } from "@/lib/api";
+import { api, type Dashboard, type FinancingOption, type Lead, type SimulatorSetting } from "@/lib/api";
 
 export default function AdminPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [settings, setSettings] = useState<SimulatorSetting[]>([]);
+  const [dashboard, setDashboard] = useState<Dashboard | null>(null);
+  const [financingOptions, setFinancingOptions] = useState<FinancingOption[]>([]);
+  const [newFinancingInstitution, setNewFinancingInstitution] = useState("");
+  const [newFinancingRate, setNewFinancingRate] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -15,10 +19,17 @@ export default function AdminPage() {
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    Promise.all([api.getLeads(username, password), api.getSettings(username, password)])
-      .then(([loadedLeads, loadedSettings]) => {
+    Promise.all([
+      api.getLeads(username, password),
+      api.getSettings(username, password),
+      api.getDashboard(username, password),
+      api.getFinancingOptions(username, password),
+    ])
+      .then(([loadedLeads, loadedSettings, loadedDashboard, loadedFinancingOptions]) => {
         setLeads(loadedLeads);
         setSettings(loadedSettings);
+        setDashboard(loadedDashboard);
+        setFinancingOptions(loadedFinancingOptions);
       })
       .catch(() => {
         setIsAuthenticated(false);
@@ -38,6 +49,7 @@ export default function AdminPage() {
     setUsername("");
     setPassword("");
     setError("");
+    setDashboard(null);
   };
 
   const atualizarStatus = async (lead: Lead) => {
@@ -67,11 +79,62 @@ export default function AdminPage() {
     }
   };
 
+  const addFinancingOption = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const rate = Number(newFinancingRate);
+    if (!newFinancingInstitution.trim() || !Number.isFinite(rate) || rate < 0 || rate > 100) {
+      setError("Informe a instituição e uma taxa mensal entre 0 e 100%.");
+      return;
+    }
+
+    try {
+      const { option } = await api.createFinancingOption({ instituicao: newFinancingInstitution.trim(), taxa_juros_mensal: rate }, username, password);
+      setFinancingOptions((previous) => [...previous, option]);
+      setNewFinancingInstitution("");
+      setNewFinancingRate("");
+      setError("");
+    } catch {
+      setError("Não foi possível cadastrar a opção de financiamento.");
+    }
+  };
+
+  const updateFinancingOptionValue = (id: number, field: "instituicao" | "taxa_juros_mensal" | "ativa", value: string | number | boolean) => {
+    setFinancingOptions((previous) => previous.map((option) => (option.id === id ? { ...option, [field]: value } : option)));
+  };
+
+  const saveFinancingOption = async (option: FinancingOption) => {
+    try {
+      const { option: savedOption } = await api.updateFinancingOption(option, username, password);
+      setFinancingOptions((previous) => previous.map((item) => (item.id === savedOption.id ? savedOption : item)));
+      setError("");
+    } catch {
+      setError("Não foi possível atualizar a opção de financiamento.");
+    }
+  };
+
+  const removeFinancingOption = async (id: number) => {
+    try {
+      await api.deleteFinancingOption(id, username, password);
+      setFinancingOptions((previous) => previous.filter((option) => option.id !== id));
+      setError("");
+    } catch {
+      setError("Não foi possível excluir a opção de financiamento.");
+    }
+  };
+
   const stats = useMemo(
     () => ({
       leads: leads.length,
+      convertidos: leads.filter((lead) => lead.status !== "NOVO").length,
       conversao: Math.round((leads.filter((lead) => lead.status !== "NOVO").length / Math.max(leads.length, 1)) * 100),
       emNegociacao: leads.filter((lead) => lead.status === "NEGOCIAÇÃO" || lead.status === "PROPOSTA ENVIADA").length,
+      porStatus: {
+        novos: leads.filter((lead) => lead.status === "NOVO").length,
+        contatados: leads.filter((lead) => lead.status === "CONTATADO").length,
+        qualificados: leads.filter((lead) => lead.status === "QUALIFICADO").length,
+        propostas: leads.filter((lead) => lead.status === "PROPOSTA ENVIADA").length,
+        contratados: leads.filter((lead) => lead.status === "CONTRATADO").length,
+      },
     }),
     [leads],
   );
@@ -125,12 +188,26 @@ export default function AdminPage() {
 
           <div className="metric-bar admin-metrics">
             <div>
+              <span>Simulações</span>
+              <strong>{dashboard?.totalSimulacoes.toLocaleString("pt-BR") ?? "—"}</strong>
+            </div>
+            <div>
               <span>Leads</span>
               <strong>{stats.leads}</strong>
             </div>
             <div>
               <span>Conversão</span>
               <strong>{stats.conversao}%</strong>
+              <details className="conversion-breakdown">
+                <summary>{stats.convertidos} convertidos de {stats.leads} leads</summary>
+                <ul>
+                  <li>Novos: {stats.porStatus.novos}</li>
+                  <li>Contatados: {stats.porStatus.contatados}</li>
+                  <li>Qualificados: {stats.porStatus.qualificados}</li>
+                  <li>Propostas enviadas: {stats.porStatus.propostas}</li>
+                  <li>Contratados: {stats.porStatus.contratados}</li>
+                </ul>
+              </details>
             </div>
             <div>
               <span>Em proposta</span>
@@ -185,6 +262,52 @@ export default function AdminPage() {
               ))}
               <button type="submit">Salvar configurações</button>
             </form>
+            {error ? <p className="login-error">{error}</p> : null}
+          </section>
+
+          <section className="panel financing-settings">
+            <div className="admin-header">
+              <span>Parcelamento</span>
+              <h2>Taxas de financiamento</h2>
+            </div>
+            <p className="financing-admin-note">
+              Cadastre manualmente a taxa efetiva mensal informada pelo banco ou financiadora. Não há integração com instituições financeiras; confirme taxa, CET, IOF, tarifas e condições antes de publicar a opção.
+            </p>
+            <form onSubmit={addFinancingOption} className="financing-create-form">
+              <label>
+                Instituição financeira
+                <input value={newFinancingInstitution} onChange={(event) => setNewFinancingInstitution(event.target.value)} maxLength={120} required />
+              </label>
+              <label>
+                Taxa efetiva mensal (% a.m.)
+                <input type="number" min="0" max="100" step="0.0001" value={newFinancingRate} onChange={(event) => setNewFinancingRate(event.target.value)} required />
+              </label>
+              <button type="submit">Adicionar opção</button>
+            </form>
+            {financingOptions.length > 0 ? (
+              <div className="financing-options-list">
+                {financingOptions.map((option) => (
+                  <div className="financing-option-row" key={option.id}>
+                    <label>
+                      Instituição
+                      <input value={option.instituicao} onChange={(event) => updateFinancingOptionValue(option.id, "instituicao", event.target.value)} maxLength={120} />
+                    </label>
+                    <label>
+                      Taxa mensal (% a.m.)
+                      <input type="number" min="0" max="100" step="0.0001" value={option.taxa_juros_mensal} onChange={(event) => updateFinancingOptionValue(option.id, "taxa_juros_mensal", Number(event.target.value))} />
+                    </label>
+                    <label className="financing-active-toggle">
+                      <input type="checkbox" checked={option.ativa} onChange={(event) => updateFinancingOptionValue(option.id, "ativa", event.target.checked)} />
+                      Disponível ao cliente
+                    </label>
+                    <button type="button" className="mini-button" onClick={() => saveFinancingOption(option)}>Salvar</button>
+                    <button type="button" className="mini-button financing-delete" onClick={() => removeFinancingOption(option.id)}>Excluir</button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="financing-admin-note">Nenhuma opção cadastrada. O cliente verá apenas pagamento à vista até que uma taxa seja informada.</p>
+            )}
             {error ? <p className="login-error">{error}</p> : null}
           </section>
         </section>
