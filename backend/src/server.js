@@ -25,6 +25,56 @@ const adminPassword = process.env.ADMIN_PASSWORD || (process.env.NODE_ENV === 'p
 const validLeadStatuses = new Set(['NOVO', 'CONTATADO', 'QUALIFICADO', 'PROPOSTA ENVIADA', 'CONTRATADO']);
 const validPaymentTerms = new Set([0, 12, 24, 36]);
 const failedAdminAttempts = new Map();
+const whatsappApiVersion = process.env.WHATSAPP_API_VERSION || 'v23.0';
+
+function getWhatsAppConfiguration() {
+  const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  const recipientPhone = process.env.WHATSAPP_RECIPIENT_PHONE?.replace(/\D/g, '');
+
+  if (!accessToken || !phoneNumberId || !recipientPhone) return null;
+
+  return { accessToken, phoneNumberId, recipientPhone };
+}
+
+async function notifyNewSimulation(simulation, result) {
+  const configuration = getWhatsAppConfiguration();
+  if (!configuration) {
+    console.warn('Notificacao WhatsApp desativada: configure WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID e WHATSAPP_RECIPIENT_PHONE.');
+    return { sent: false, reason: 'not_configured' };
+  }
+
+  const message = [
+    'Nova simulacao realizada na JB Ecosolar',
+    `ID: ${simulation.id}`,
+    `Conta mensal: R$ ${Number(simulation.valor_conta).toFixed(2)}`,
+    `Economia mensal: R$ ${Number(result.economia_mensal).toFixed(2)}`,
+    `Economia anual: R$ ${Number(result.economia_anual).toFixed(2)}`,
+    `Potencia estimada: ${Number(result.potencia_kwp).toFixed(2)} kWp`,
+  ].join('\n');
+
+  const response = await fetch(`https://graph.facebook.com/${whatsappApiVersion}/${configuration.phoneNumberId}/messages`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${configuration.accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to: configuration.recipientPhone,
+      type: 'text',
+      text: { preview_url: false, body: message },
+    }),
+  });
+
+  if (!response.ok) {
+    const details = await response.text();
+    throw new Error(`WhatsApp API retornou ${response.status}: ${details.slice(0, 500)}`);
+  }
+
+  return { sent: true };
+}
 
 if (process.env.NODE_ENV === 'production' && (!process.env.ADMIN_USERNAME || !process.env.ADMIN_PASSWORD)) {
   throw new Error('ADMIN_USERNAME e ADMIN_PASSWORD são obrigatórias em produção.');
@@ -129,8 +179,15 @@ app.post('/api/simulacoes', asyncHandler(async (req, res) => {
     }
     const result = await calculateSimulation({ ...input, prazo_pagamento: prazoPagamento });
     const simulation = await createSimulation({ ...input, ...result });
+    let notification = { sent: false, reason: 'not_sent' };
+    try {
+      notification = await notifyNewSimulation(simulation, result);
+    } catch (error) {
+      console.error('Falha ao enviar notificacao de nova simulacao pelo WhatsApp:', error.message);
+      notification = { sent: false, reason: 'provider_error' };
+    }
 
-    res.status(201).json({ simulation, result });
+    res.status(201).json({ simulation, result, notification });
   } catch (error) {
     res.status(500).json({ error: 'Erro ao processar a simulação' });
   }
