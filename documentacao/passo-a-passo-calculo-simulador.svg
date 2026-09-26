@@ -29,9 +29,9 @@
 
   <rect x="1050" y="145" width="450" height="285" rx="8" fill="#163d7a" />
   <text class="settings-title" x="1080" y="190">Parametros configurados pelo administrador</text>
-  <text class="settings-copy" x="1080" y="230">Tarifa media: R$ 1,70 por kWh</text>
+  <text class="settings-copy" x="1080" y="230">Tarifa media: R$ 1,13 por kWh</text>
   <text class="settings-copy" x="1080" y="265">Producao media: 1.400 kWh/kWp/ano</text>
-  <text class="settings-copy" x="1080" y="300">Fator de perdas: 0,90</text>
+  <text class="settings-copy" x="1080" y="300">Fator de perdas: 0,25</text>
   <text class="settings-copy" x="1080" y="335">Economia estimada: 35%</text>
   <text class="settings-copy" x="1080" y="370">Vida util: 25 anos</text>
   <text class="settings-copy" x="1080" y="405">Custo por kWp: R$ 4.200,00*</text>
@@ -46,7 +46,7 @@
   <text class="step" x="115" y="425">PASSO 2</text>
   <text class="box-title" x="115" y="465">Calcula o consumo mensal estimado</text>
   <text class="formula" x="115" y="502">Consumo = valor da conta / tarifa media</text>
-  <text class="answer" x="115" y="530">R$ 520,00 / R$ 1,70 = 306 kWh por mes</text>
+  <text class="answer" x="115" y="530">R$ 520,00 / R$ 1,13 = 460 kWh por mes</text>
 
   <path class="line" d="M460 545 L460 610" />
   <rect class="box" x="80" y="610" width="760" height="185" rx="8" />

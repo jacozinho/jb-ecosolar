@@ -29,9 +29,9 @@ const memoryState = {
     },
   ],
   configuracoes: [
-    { id: 1, parametro: 'tarifa', valor: 1.7, descricao: 'Tarifa média de energia' },
+    { id: 1, parametro: 'tarifa', valor: 1.13, descricao: 'Tarifa média de energia' },
     { id: 2, parametro: 'producao_media_kwh', valor: 1400, descricao: 'Produção média por kWp' },
-    { id: 3, parametro: 'fator_perdas', valor: 0.9, descricao: 'Fator de perdas' },
+    { id: 3, parametro: 'fator_perdas', valor: 0.25, descricao: 'Fator de perdas' },
     { id: 4, parametro: 'custo_kwp', valor: 4200, descricao: 'Custo estimado por kWp' },
     { id: 5, parametro: 'vida_util_anos', valor: 25, descricao: 'Vida útil' },
     { id: 6, parametro: 'percentual_minimo_economia', valor: 0.35, descricao: 'Percentual de economia estimada' },
@@ -96,9 +96,9 @@ async function initializePostgres() {
       ALTER TABLE simulacoes ADD COLUMN IF NOT EXISTS valor_pagamento_estimado NUMERIC NOT NULL DEFAULT 0;
       ALTER TABLE simulacoes ADD COLUMN IF NOT EXISTS valor_total_pagamento_estimado NUMERIC NOT NULL DEFAULT 0;
       INSERT INTO configuracoes (parametro, valor, descricao) VALUES
-        ('tarifa', 1.7, 'Tarifa média de energia'),
+        ('tarifa', 1.13, 'Tarifa média de energia'),
         ('producao_media_kwh', 1400, 'Produção média por kWp'),
-        ('fator_perdas', 0.9, 'Fator de perdas'),
+        ('fator_perdas', 0.25, 'Fator de perdas'),
         ('custo_kwp', 4200, 'Custo estimado por kWp'),
         ('vida_util_anos', 25, 'Vida útil'),
         ('percentual_minimo_economia', 0.35, 'Percentual de economia estimada')
@@ -389,9 +389,9 @@ export async function calculateSimulation(input, financingOption = null) {
 
   const configuracoes = await getConfiguracoes();
   const valores = Object.fromEntries(configuracoes.map((config) => [config.parametro, Number(config.valor)]));
-  const tarifa = valores.tarifa || 1.7;
+  const tarifa = valores.tarifa || 1.13;
   const producaoMediaKwh = valores.producao_media_kwh || 1400;
-  const fatorPerdas = valores.fator_perdas || 0.9;
+  const fatorPerdas = valores.fator_perdas || 0.25;
   const vidaUtilAnos = valores.vida_util_anos || 25;
   const percentualEconomia = valores.percentual_minimo_economia || 0.35;
   const custoKwp = valores.custo_kwp || 4200;

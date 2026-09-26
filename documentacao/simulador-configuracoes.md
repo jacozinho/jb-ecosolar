@@ -35,16 +35,17 @@ Para uma conta mensal de R$ 520,00 e os valores padrao:
 
 | Configuracao | Valor |
 | --- | ---: |
-| Tarifa media de energia | R$ 1,70 |
+| Tarifa media de energia | R$ 1,13 |
 | Producao media por kWp | 1.400 kWh/ano |
-| Fator de perdas | 0,90 |
+| Fator de perdas | 0,25 |
 | Percentual de economia estimada | 35% |
 | Vida util | 25 anos |
 
 O simulador calcula:
 
-- Consumo estimado: `520 / 1,70 = 306 kWh`
-- Potencia estimada: `306 / ((1.400 / 12) * 0,90) = 2,91 kWp`
+- Consumo estimado: `520 / 1,13 = 460 kWh`
+- Potencia estimada: `460 / ((1.400 / 12) * 0,25) = 15,77 kWp`
+- Investimento estimado: `15,77 * R$ 4.200,00 = R$ 66.234,00`
 - Economia mensal: `520 * 0,35 = R$ 182,00`
 - Economia anual: `182 * 12 = R$ 2.184,00`
 - Economia acumulada: `2.184 * 25 = R$ 54.600,00`
