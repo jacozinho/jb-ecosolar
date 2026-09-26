@@ -340,6 +340,12 @@ button {
   font-size: 0.78rem;
 }
 
+.payment-estimate > summary {
+  color: var(--primary);
+  cursor: pointer;
+  font-weight: 700;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;

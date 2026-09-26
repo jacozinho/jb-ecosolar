@@ -150,8 +150,8 @@ export default function Home() {
                     <strong>R$ {resultadoExibido.investimento_estimado.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong>
                   </div>
                 </div>
-                <section className="payment-estimate" aria-labelledby="payment-result-heading">
-                  <h2 id="payment-result-heading">Resultado do pagamento</h2>
+                <details className="payment-estimate">
+                  <summary>Resultado do pagamento</summary>
                   {resultadoExibido.prazo_pagamento === prazoPagamento ? (
                     <p className="payment-selected">
                       {prazoPagamento === 0 ? "Valor estimado à vista" : `Parcela estimada em ${prazoPagamento}x`}: R$ {resultadoExibido.valor_pagamento_estimado.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
@@ -164,15 +164,15 @@ export default function Home() {
                   <p className="payment-disclaimer">
                     Parcelamento apenas como referência matemática, sem juros ou taxas. Condições reais dependem da análise de crédito e da proposta comercial.
                   </p>
-                </section>
-                <details className="simulation-methodology">
-                  <summary>Como calculamos esta estimativa?</summary>
-                  <p>
-                    Com base em uma conta de R$ {valorConta.toLocaleString("pt-BR")}, estimamos um consumo de {resultadoExibido.consumo_estimado.toLocaleString("pt-BR")} kWh por mês e uma potência de {resultadoExibido.potencia_kwp.toFixed(2)} kWp para o sistema solar.
-                  </p>
-                  <p>
-                    A economia considera a tarifa de energia, a produção solar média e as perdas técnicas do sistema. A proposta final depende da análise do local de instalação e do seu perfil de consumo.
-                  </p>
+                  <details className="simulation-methodology">
+                    <summary>Como calculamos esta estimativa?</summary>
+                    <p>
+                      Com base em uma conta de R$ {valorConta.toLocaleString("pt-BR")}, estimamos um consumo de {resultadoExibido.consumo_estimado.toLocaleString("pt-BR")} kWh por mês e uma potência de {resultadoExibido.potencia_kwp.toFixed(2)} kWp para o sistema solar.
+                    </p>
+                    <p>
+                      A economia considera a tarifa de energia, a produção solar média e as perdas técnicas do sistema. A proposta final depende da análise do local de instalação e do seu perfil de consumo.
+                    </p>
+                  </details>
                 </details>
               </>
             )}
