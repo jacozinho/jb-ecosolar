@@ -116,7 +116,7 @@ export default function Home() {
             <p className="subtitle">
               Simule sua economia com um projeto fotovoltaico para sua casa, empresa ou propriedade rural. Você pode reduzir em até <strong>95%</strong> o valor da conta.
             </p>
-            <a className="hero-link" href="#valor-conta">Conheça sua economia estimada <span aria-hidden="true">↓</span></a>
+            <a className="hero-link" href="#valor-conta">Conheça sua economia estimada.</a>
           </div>
 
           <div className="simulator-card">
@@ -135,8 +135,8 @@ export default function Home() {
               <strong>R$ {valorConta.toLocaleString("pt-BR")}</strong>
             </div>
             <section className="payment-selection" aria-labelledby="payment-heading">
-              <h2 id="payment-heading">Opções de pagamento. Confira Detalhes da simulação e pagamento para mais informações.</h2>
-              <p>Escolha uma opção para incluir na simulação.</p>
+              <h2 id="payment-heading">Opções de pagamento. </h2>
+              <p>Escolha uma opção para incluir na simulação. Confira Detalhes da simulação e pagamento para mais informações.</p>
               <fieldset className="payment-options">
                 <legend className="visually-hidden">Selecione pagamento à vista ou parcelado</legend>
                 <label className="payment-option">
