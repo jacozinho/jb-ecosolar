@@ -134,7 +134,7 @@ export default function Home() {
               <strong>R$ {valorConta.toLocaleString("pt-BR")}</strong>
             </div>
             <section className="payment-selection" aria-labelledby="payment-heading">
-              <h2 id="payment-heading">Opções de pagamento</h2>
+              <h2 id="payment-heading">Opções de pagamento. Confira Detalhes da simulação e pagamento para mais informações.</h2>
               <p>Escolha uma opção para incluir na simulação.</p>
               <fieldset className="payment-options">
                 <legend className="visually-hidden">Selecione pagamento à vista ou parcelado</legend>
@@ -168,16 +168,6 @@ export default function Home() {
               </fieldset>
               {prazoPagamento > 0 && (
                 <div className="financing-selection">
-                  <label htmlFor="prazo-pagamento">Quantidade de parcelas</label>
-                  <select
-                    id="prazo-pagamento"
-                    value={prazoPagamento}
-                    onChange={(event) => setPrazoPagamento(Number(event.target.value))}
-                  >
-                    {Array.from({ length: 36 }, (_, index) => index + 1).map((term) => (
-                      <option key={term} value={term}>{term} {term === 1 ? "parcela" : "parcelas"}</option>
-                    ))}
-                  </select>
                   {opcoesFinanciamento.length > 0 ? (
                     <>
                       <label htmlFor="financiamento-opcao">Instituição e taxa mensal</label>
@@ -196,6 +186,16 @@ export default function Home() {
                   ) : (
                     <p>Parcelamento indisponível no momento. As opções serão exibidas quando houver taxas cadastradas.</p>
                   )}
+                  <label htmlFor="prazo-pagamento">Quantidade de parcelas</label>
+                  <select
+                    id="prazo-pagamento"
+                    value={prazoPagamento}
+                    onChange={(event) => setPrazoPagamento(Number(event.target.value))}
+                  >
+                    {Array.from({ length: 36 }, (_, index) => index + 1).map((term) => (
+                      <option key={term} value={term}>{term} {term === 1 ? "parcela" : "parcelas"}</option>
+                    ))}
+                  </select>
                 </div>
               )}
             </section>
