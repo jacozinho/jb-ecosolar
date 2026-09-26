@@ -14,6 +14,7 @@ export type SimulationResult = {
   economia_mensal: number;
   economia_anual: number;
   economia_projetada: number;
+  vida_util_anos: number;
   potencia_kwp: number;
   investimento_estimado: number;
   consumo_estimado: number;
