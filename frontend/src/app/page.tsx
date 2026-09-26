@@ -20,6 +20,7 @@ export default function Home() {
   const erroPreviaAtual = erroPrevia?.key === previewKey ? erroPrevia.message : null;
   const previaEmCarregamento = !resultadoExibido && !erroPreviaAtual && !(prazoPagamento > 0 && financiamentoId === null);
   const simulacaoSalvaAtual = simulacaoSalva?.key === previewKey ? simulacaoSalva.createdAt : null;
+  const vidaUtilAnos = resultadoExibido?.vida_util_anos ?? 25;
 
   useEffect(() => {
     let active = true;
@@ -251,7 +252,7 @@ export default function Home() {
                     <strong>{resultadoExibido.potencia_kwp.toFixed(2)} kWp</strong>
                   </div>
                   <div>
-                    <span>Economia acumulada em {resultadoExibido.vida_util_anos} anos</span>
+                    <span>Economia acumulada em {vidaUtilAnos} anos</span>
                     <strong>R$ {resultadoExibido.economia_projetada.toLocaleString("pt-BR")}</strong>
                   </div>
                   <div>
@@ -261,13 +262,13 @@ export default function Home() {
                   </div>
                 </div>
                 <p className="result-context">
-                  Estes valores são estimativas: a economia anual é a projeção para 12 meses, e o acumulado considera a vida útil configurada de {resultadoExibido.vida_util_anos} anos.
+                  Estes valores são estimativas: a economia anual é a projeção para 12 meses, e o acumulado considera a vida útil configurada de {vidaUtilAnos} anos.
                 </p>
                 <section className="payment-summary" aria-live="polite" aria-label="Prévia do pagamento">
                   <span className="payment-summary-label">
                     {prazoPagamento === 0 ? "Pagamento à vista estimado" : `Parcela mensal estimada · ${prazoPagamento}x`}
                   </span>
-                  <strong>Valor da Parcela: R$ {resultadoExibido.valor_pagamento_estimado.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong>
+                  <strong>R$ {resultadoExibido.valor_pagamento_estimado.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong>
                   {prazoPagamento > 0 && (
                     <span className="payment-summary-detail">
                       Total em {prazoPagamento} parcelas: R$ {resultadoExibido.valor_total_pagamento_estimado.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} · {resultadoExibido.financiamento_instituicao}, {resultadoExibido.taxa_juros_mensal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}% a.m.
