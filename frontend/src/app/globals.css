@@ -709,6 +709,16 @@ button {
   font-size: 0.96rem;
 }
 
+.admin-panel table {
+  display: block;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.simulation-history {
+  margin-top: 24px;
+}
+
 .admin-panel th,
 .admin-panel td {
   padding: 12px 10px;

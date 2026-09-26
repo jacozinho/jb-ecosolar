@@ -7,6 +7,7 @@ export type Lead = {
   email?: string;
   cidade?: string;
   status: string;
+  created_at: string;
 };
 
 export type SimulationResult = {
@@ -45,6 +46,20 @@ export type FinancingOption = {
   updated_at?: string;
 };
 
+export type SimulationRecord = {
+  id: number;
+  valor_conta: number;
+  economia_mensal: number;
+  economia_anual: number;
+  potencia_kwp: number;
+  prazo_pagamento: number;
+  financiamento_instituicao: string;
+  taxa_juros_mensal: number;
+  valor_pagamento_estimado: number;
+  valor_total_pagamento_estimado: number;
+  created_at: string;
+};
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const headers = new Headers(options?.headers);
   if (options?.body && !headers.has("Content-Type")) {
@@ -69,15 +84,18 @@ function adminHeaders(username: string, password: string) {
 }
 
 export const api = {
-  createLead: (lead: Omit<Lead, "id" | "status">) =>
+  createLead: (lead: Omit<Lead, "id" | "status" | "created_at">) =>
     request<{ lead: Lead }>("/api/leads", { method: "POST", body: JSON.stringify(lead) }),
+  previewSimulation: (valor_conta: number, prazo_pagamento: number, financiamento_id: number | null) =>
+    request<{ result: SimulationResult }>("/api/simulacoes/preview", { method: "POST", body: JSON.stringify({ valor_conta, prazo_pagamento, financiamento_id }) }),
   createSimulation: (valor_conta: number, prazo_pagamento: number, financiamento_id: number | null) =>
-    request<{ result: SimulationResult }>("/api/simulacoes", { method: "POST", body: JSON.stringify({ valor_conta, prazo_pagamento, financiamento_id }) }),
+    request<{ simulation: SimulationRecord; result: SimulationResult }>("/api/simulacoes", { method: "POST", body: JSON.stringify({ valor_conta, prazo_pagamento, financiamento_id }) }),
   getPublicDashboard: () => request<Dashboard>("/api/public/dashboard"),
   getPublicFinancingOptions: () => request<Omit<FinancingOption, "ativa" | "updated_at">[]>("/api/public/financiamentos"),
   getDashboard: (username: string, password: string) =>
     request<Dashboard>("/api/dashboard", { headers: adminHeaders(username, password) }),
   getLeads: (username: string, password: string) => request<Lead[]>("/api/leads", { headers: adminHeaders(username, password) }),
+  getSimulations: (username: string, password: string) => request<SimulationRecord[]>("/api/simulacoes", { headers: adminHeaders(username, password) }),
   updateLeadStatus: (id: number, status: string, username: string, password: string) =>
     request<{ lead: Lead }>(`/api/leads/${id}`, { method: "PATCH", body: JSON.stringify({ status }), headers: adminHeaders(username, password) }),
   getSettings: (username: string, password: string) =>

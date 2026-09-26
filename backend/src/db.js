@@ -174,6 +174,22 @@ export async function getLeads() {
   return [...memoryState.leads];
 }
 
+export async function getSimulacoes() {
+  if (databaseType === 'postgres') {
+    const { rows } = await pool.query(
+      `SELECT id, valor_conta, economia_mensal, economia_anual, potencia_kwp,
+              prazo_pagamento, financiamento_instituicao, taxa_juros_mensal,
+              valor_pagamento_estimado, valor_total_pagamento_estimado, created_at
+       FROM simulacoes
+       ORDER BY created_at DESC
+       LIMIT 100`,
+    );
+    return rows;
+  }
+
+  return memoryState.simulacoes.slice(0, 100).map((simulation) => ({ ...simulation }));
+}
+
 export async function createLead(payload) {
   if (databaseType === 'postgres') {
     const { rows } = await pool.query(

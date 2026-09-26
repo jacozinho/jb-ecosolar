@@ -3,37 +3,23 @@
 import { useEffect, useState } from "react";
 import { api, type Dashboard, type FinancingOption, type SimulationResult } from "@/lib/api";
 
-function calcularParcelaEstimada(valorFinanciado: number, parcelas: number, taxaMensalPercentual: number) {
-  if (parcelas <= 0) return valorFinanciado;
-  const taxaMensal = taxaMensalPercentual / 100;
-  const valorParcela = taxaMensal === 0
-    ? valorFinanciado / parcelas
-    : valorFinanciado * taxaMensal / (1 - (1 + taxaMensal) ** -parcelas);
-  return Number(valorParcela.toFixed(2));
-}
-
 export default function Home() {
   const [valorConta, setValorConta] = useState(520);
   const [leadForm, setLeadForm] = useState({ nome: "", telefone: "", email: "", cidade: "" });
-  const [resultadoExibido, setResultadoExibido] = useState<SimulationResult | null>({
-    economia_mensal: 182,
-    economia_anual: 2184,
-    economia_projetada: 54600,
-    potencia_kwp: 2.91,
-    investimento_estimado: 12222,
-    consumo_estimado: 306,
-    prazo_pagamento: 0,
-    financiamento_id: null,
-    financiamento_instituicao: "",
-    taxa_juros_mensal: 0,
-    valor_pagamento_estimado: 12222,
-    valor_total_pagamento_estimado: 12222,
-  });
   const [prazoPagamento, setPrazoPagamento] = useState(0);
   const [opcoesFinanciamento, setOpcoesFinanciamento] = useState<Omit<FinancingOption, "ativa" | "updated_at">[]>([]);
   const [financiamentoId, setFinanciamentoId] = useState<number | null>(null);
+  const [previa, setPrevia] = useState<{ key: string; result: SimulationResult } | null>(null);
+  const [erroPrevia, setErroPrevia] = useState<{ key: string; message: string } | null>(null);
+  const [simulacaoSalva, setSimulacaoSalva] = useState<{ key: string; createdAt: string } | null>(null);
+  const [salvandoSimulacao, setSalvandoSimulacao] = useState(false);
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [notificacao, setNotificacao] = useState("Simulação pronta para análise comercial.");
+  const previewKey = `${valorConta}:${prazoPagamento}:${financiamentoId ?? "avista"}`;
+  const resultadoExibido = previa?.key === previewKey ? previa.result : null;
+  const erroPreviaAtual = erroPrevia?.key === previewKey ? erroPrevia.message : null;
+  const previaEmCarregamento = !resultadoExibido && !erroPreviaAtual && !(prazoPagamento > 0 && financiamentoId === null);
+  const simulacaoSalvaAtual = simulacaoSalva?.key === previewKey ? simulacaoSalva.createdAt : null;
 
   useEffect(() => {
     let active = true;
@@ -59,19 +45,47 @@ export default function Home() {
     };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    if (prazoPagamento > 0 && financiamentoId === null) return;
+
+    const timer = window.setTimeout(() => {
+      api.previewSimulation(valorConta, prazoPagamento, financiamentoId)
+        .then(({ result }) => {
+          if (active) setPrevia({ key: previewKey, result });
+        })
+        .catch(() => {
+          if (active) setErroPrevia({ key: previewKey, message: "Não foi possível calcular a prévia. Verifique sua conexão e tente novamente." });
+        });
+    }, 180);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [valorConta, prazoPagamento, financiamentoId, previewKey]);
+
   const handleSimular = async () => {
     if (prazoPagamento > 0 && financiamentoId === null) {
       setNotificacao("Selecione uma instituição financiadora para calcular as parcelas.");
       return;
     }
+    if (!resultadoExibido) {
+      setNotificacao(erroPreviaAtual || "A prévia ainda está sendo calculada. Aguarde um instante e tente novamente.");
+      return;
+    }
 
+    setSalvandoSimulacao(true);
     try {
-      const { result } = await api.createSimulation(valorConta, prazoPagamento, financiamentoId);
-      setResultadoExibido(result);
+      const { simulation, result } = await api.createSimulation(valorConta, prazoPagamento, financiamentoId);
+      setPrevia({ key: previewKey, result });
+      setSimulacaoSalva({ key: previewKey, createdAt: simulation.created_at });
       api.getPublicDashboard().then(setDashboard).catch(() => setDashboard(null));
-      setNotificacao("Simulação concluída com sucesso. O cliente pode solicitar proposta.");
+      setNotificacao(`Simulação registrada em ${new Date(simulation.created_at).toLocaleString("pt-BR")}.`);
     } catch {
       setNotificacao("Não foi possível realizar a simulação. Tente novamente.");
+    } finally {
+      setSalvandoSimulacao(false);
     }
   };
 
@@ -91,14 +105,6 @@ export default function Home() {
       setNotificacao("Não foi possível registrar o lead. Tente novamente.");
     }
   };
-
-  const resultadoPagamentoAtual = resultadoExibido &&
-    resultadoExibido.prazo_pagamento === prazoPagamento &&
-    (prazoPagamento === 0 || resultadoExibido.financiamento_id === financiamentoId);
-  const financiamentoSelecionado = opcoesFinanciamento.find((option) => option.id === financiamentoId);
-  const parcelaPreview = resultadoExibido && prazoPagamento > 0 && financiamentoSelecionado
-    ? calcularParcelaEstimada(resultadoExibido.investimento_estimado, prazoPagamento, financiamentoSelecionado.taxa_juros_mensal)
-    : null;
 
   return (
     <main className="page-shell">
@@ -229,10 +235,7 @@ export default function Home() {
                 </div>
               )}
             </section>
-            <div className="simulator-actions">
-              <button type="button" onClick={handleSimular} className="simulator-action">Simular minha economia</button>
-            </div>
-            {resultadoExibido && (
+            {resultadoExibido ? (
               <>
                 <div className="result-grid">
                   <div>
@@ -257,41 +260,21 @@ export default function Home() {
                     <small>Antes dos encargos de financiamento</small>
                   </div>
                 </div>
-                <section className="payment-summary" aria-live="polite" aria-label="Pagamento selecionado">
-                  {resultadoPagamentoAtual ? (
-                    <>
-                      <span className="payment-summary-label">
-                        {prazoPagamento === 0 ? "Pagamento à vista estimado" : `Parcela mensal estimada · ${prazoPagamento}x`}
-                      </span>
-                      <strong>R$ {resultadoExibido.valor_pagamento_estimado.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong>
-                      {prazoPagamento > 0 && (
-                        <span className="payment-summary-detail">
-                          Total em {prazoPagamento} parcelas: R$ {resultadoExibido.valor_total_pagamento_estimado.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} · {resultadoExibido.financiamento_instituicao}, {resultadoExibido.taxa_juros_mensal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}% a.m.
-                        </span>
-                      )}
-                    </>
-                  ) : prazoPagamento === 0 ? (
-                    <>
-                      <span className="payment-summary-label">Prévia · pagamento à vista</span>
-                      <strong>R$ {resultadoExibido.investimento_estimado.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong>
-                      <span className="payment-summary-detail">Valor do sistema estimado, antes dos encargos de financiamento.</span>
-                    </>
-                  ) : parcelaPreview !== null && financiamentoSelecionado ? (
-                    <>
-                      <span className="payment-summary-label">Prévia da parcela mensal · {prazoPagamento}x</span>
-                      <strong>R$ {parcelaPreview.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong>
-                      <span className="payment-summary-detail">
-                        Total estimado: R$ {(parcelaPreview * prazoPagamento).toLocaleString("pt-BR", { minimumFractionDigits: 2 })} · {financiamentoSelecionado.instituicao}, {financiamentoSelecionado.taxa_juros_mensal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}% a.m.
-                      </span>
-                      <span className="payment-summary-pending" role="status">
-                        Prévia baseada no valor do sistema exibido acima. Clique em “Simular minha economia” para atualizar com a conta atual e registrar a simulação.
-                      </span>
-                    </>
-                  ) : (
-                    <p className="payment-summary-pending" role="status">
-                      Cadastre ou selecione uma taxa de financiamento para calcular a parcela.
-                    </p>
+                <section className="payment-summary" aria-live="polite" aria-label="Prévia do pagamento">
+                  <span className="payment-summary-label">
+                    {prazoPagamento === 0 ? "Pagamento à vista estimado" : `Parcela mensal estimada · ${prazoPagamento}x`}
+                  </span>
+                  <strong>R$ {resultadoExibido.valor_pagamento_estimado.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong>
+                  {prazoPagamento > 0 && (
+                    <span className="payment-summary-detail">
+                      Total em {prazoPagamento} parcelas: R$ {resultadoExibido.valor_total_pagamento_estimado.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} · {resultadoExibido.financiamento_instituicao}, {resultadoExibido.taxa_juros_mensal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}% a.m.
+                    </span>
                   )}
+                  <span className="payment-summary-pending">
+                    {simulacaoSalvaAtual
+                      ? `Simulação registrada em ${new Date(simulacaoSalvaAtual).toLocaleString("pt-BR")}.`
+                      : "Prévia calculada automaticamente; ainda não registrada."}
+                  </span>
                 </section>
                 <details className="payment-estimate" id="detalhes-simulacao-pagamento">
                   <summary>Detalhes da simulação e pagamento</summary>
@@ -309,7 +292,22 @@ export default function Home() {
                   </details>
                 </details>
               </>
+            ) : (
+              <section className="payment-summary" aria-live="polite" aria-label="Prévia do pagamento">
+                <span className="payment-summary-pending" role="status">
+                  {erroPreviaAtual || (prazoPagamento > 0 && financiamentoId === null
+                    ? "Selecione uma instituição para calcular as parcelas."
+                    : previaEmCarregamento
+                      ? "Calculando sua estimativa…"
+                      : "A prévia não está disponível. Tente novamente.")}
+                </span>
+              </section>
             )}
+            <div className="simulator-actions">
+              <button type="button" onClick={handleSimular} className="simulator-action" disabled={!resultadoExibido || salvandoSimulacao}>
+                {salvandoSimulacao ? "Registrando simulação…" : simulacaoSalvaAtual ? "Registrar nova simulação" : "Registrar simulação"}
+              </button>
+            </div>
           </div>
         </section>
 

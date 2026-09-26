@@ -12,6 +12,7 @@ import {
   getDashboard,
   getLeads,
   getOpcoesFinanciamento,
+  getSimulacoes,
   isDatabaseHealthy,
   initDb,
   atualizarOpcaoFinanciamento,
@@ -27,7 +28,7 @@ const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:3000').spli
 const adminUsername = process.env.ADMIN_USERNAME || (process.env.NODE_ENV === 'production' ? '' : 'admin');
 const adminPassword = process.env.ADMIN_PASSWORD || (process.env.NODE_ENV === 'production' ? '' : 'jb2025');
 const validLeadStatuses = new Set(['NOVO', 'CONTATADO', 'QUALIFICADO', 'PROPOSTA ENVIADA', 'CONTRATADO']);
-const validPaymentTerms = new Set([0, 12, 24, 36]);
+const validPaymentTerms = new Set([0, ...Array.from({ length: 36 }, (_, index) => index + 1)]);
 const failedAdminAttempts = new Map();
 const whatsappApiVersion = process.env.WHATSAPP_API_VERSION || 'v23.0';
 const whatsappWebhookVerifyToken = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN;
@@ -235,7 +236,7 @@ app.post('/api/simulacoes', asyncHandler(async (req, res) => {
     if (validationError) return res.status(400).json({ error: validationError });
     const prazoPagamento = input.prazo_pagamento ?? 0;
     if (!validPaymentTerms.has(prazoPagamento)) {
-      return res.status(400).json({ error: 'prazo_pagamento deve ser 0, 12, 24 ou 36.' });
+      return res.status(400).json({ error: 'prazo_pagamento deve ser 0 ou um número entre 1 e 36.' });
     }
     let financingOption = null;
     if (prazoPagamento > 0) {
@@ -261,6 +262,29 @@ app.post('/api/simulacoes', asyncHandler(async (req, res) => {
   }
 }));
 
+app.post('/api/simulacoes/preview', asyncHandler(async (req, res) => {
+  const input = req.body || {};
+  const validationError = validateFinitePositive(input.valor_conta, 'valor_conta');
+  if (validationError) return res.status(400).json({ error: validationError });
+
+  const prazoPagamento = input.prazo_pagamento ?? 0;
+  if (!validPaymentTerms.has(prazoPagamento)) {
+    return res.status(400).json({ error: 'prazo_pagamento deve ser 0, 1 a 36 parcelas.' });
+  }
+
+  let financingOption = null;
+  if (prazoPagamento > 0) {
+    if (!Number.isSafeInteger(input.financiamento_id) || input.financiamento_id <= 0) {
+      return res.status(400).json({ error: 'Selecione uma instituição para calcular as parcelas.' });
+    }
+    financingOption = (await getOpcoesFinanciamento()).find((option) => option.id === input.financiamento_id && option.ativa);
+    if (!financingOption) return res.status(400).json({ error: 'A opção de financiamento selecionada não está disponível.' });
+  }
+
+  const result = await calculateSimulation({ valor_conta: input.valor_conta, prazo_pagamento: prazoPagamento }, financingOption);
+  return res.json({ result });
+}));
+
 app.post('/api/leads', asyncHandler(async (req, res) => {
   try {
     const input = req.body || {};
@@ -276,6 +300,10 @@ app.post('/api/leads', asyncHandler(async (req, res) => {
 app.get('/api/leads', requireAdmin, asyncHandler(async (req, res) => {
   const leads = await getLeads();
   return res.json(leads);
+}));
+
+app.get('/api/simulacoes', requireAdmin, asyncHandler(async (req, res) => {
+  return res.json(await getSimulacoes());
 }));
 
 app.get('/api/public/dashboard', asyncHandler(async (req, res) => {

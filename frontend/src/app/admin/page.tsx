@@ -2,10 +2,17 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { api, type Dashboard, type FinancingOption, type Lead, type SimulatorSetting } from "@/lib/api";
+import { api, type Dashboard, type FinancingOption, type Lead, type SimulationRecord, type SimulatorSetting } from "@/lib/api";
+
+function formatDateTime(value?: string) {
+  if (!value) return "—";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString("pt-BR");
+}
 
 export default function AdminPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [simulations, setSimulations] = useState<SimulationRecord[]>([]);
   const [settings, setSettings] = useState<SimulatorSetting[]>([]);
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [financingOptions, setFinancingOptions] = useState<FinancingOption[]>([]);
@@ -24,12 +31,14 @@ export default function AdminPage() {
       api.getSettings(username, password),
       api.getDashboard(username, password),
       api.getFinancingOptions(username, password),
+      api.getSimulations(username, password),
     ])
-      .then(([loadedLeads, loadedSettings, loadedDashboard, loadedFinancingOptions]) => {
+      .then(([loadedLeads, loadedSettings, loadedDashboard, loadedFinancingOptions, loadedSimulations]) => {
         setLeads(loadedLeads);
         setSettings(loadedSettings);
         setDashboard(loadedDashboard);
         setFinancingOptions(loadedFinancingOptions);
+        setSimulations(loadedSimulations);
       })
       .catch(() => {
         setIsAuthenticated(false);
@@ -222,6 +231,7 @@ export default function AdminPage() {
                   <th>Cliente</th>
                   <th>WhatsApp</th>
                   <th>Status</th>
+                  <th>Data/hora da proposta</th>
                   <th>Ação</th>
                 </tr>
               </thead>
@@ -231,6 +241,7 @@ export default function AdminPage() {
                     <td>{lead.nome}</td>
                     <td>{lead.telefone}</td>
                     <td>{lead.status}</td>
+                    <td>{formatDateTime(lead.created_at)}</td>
                     <td>
                       <button type="button" className="mini-button" onClick={() => atualizarStatus(lead)}>
                         Avançar
@@ -241,6 +252,40 @@ export default function AdminPage() {
               </tbody>
             </table>
           </div>
+
+          <section className="panel admin-panel simulation-history">
+            <div className="admin-header">
+              <span>Histórico</span>
+              <h2>Simulações recentes</h2>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Data/hora</th>
+                  <th>Conta de energia</th>
+                  <th>Economia mensal</th>
+                  <th>Pagamento estimado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {simulations.map((simulation) => (
+                  <tr key={simulation.id}>
+                    <td>{formatDateTime(simulation.created_at)}</td>
+                    <td>R$ {Number(simulation.valor_conta).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
+                    <td>R$ {Number(simulation.economia_mensal).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
+                    <td>
+                      {simulation.prazo_pagamento > 0
+                        ? `R$ ${Number(simulation.valor_pagamento_estimado).toLocaleString("pt-BR", { minimumFractionDigits: 2 })} · ${simulation.prazo_pagamento}x`
+                        : `R$ ${Number(simulation.valor_pagamento_estimado).toLocaleString("pt-BR", { minimumFractionDigits: 2 })} à vista`}
+                    </td>
+                  </tr>
+                ))}
+                {simulations.length === 0 && (
+                  <tr><td colSpan={4}>Nenhuma simulação registrada.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </section>
 
           <section className="panel simulator-settings">
             <div className="admin-header">
