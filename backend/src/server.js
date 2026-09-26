@@ -26,6 +26,10 @@ const validLeadStatuses = new Set(['NOVO', 'CONTATADO', 'QUALIFICADO', 'PROPOSTA
 const validPaymentTerms = new Set([0, 12, 24, 36]);
 const failedAdminAttempts = new Map();
 const whatsappApiVersion = process.env.WHATSAPP_API_VERSION || 'v23.0';
+const whatsappWebhookVerifyToken = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN;
+const whatsappAppSecret = process.env.WHATSAPP_APP_SECRET;
+const customerServiceWindowMs = 24 * 60 * 60 * 1000;
+let recipientLastInboundAt = 0;
 
 function getWhatsAppConfiguration() {
   const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
@@ -37,21 +41,19 @@ function getWhatsAppConfiguration() {
   return { accessToken, phoneNumberId, recipientPhone };
 }
 
-async function notifyNewSimulation(simulation, result) {
+async function notifyNewSimulation(simulation) {
   const configuration = getWhatsAppConfiguration();
   if (!configuration) {
     console.warn('Notificacao WhatsApp desativada: configure WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID e WHATSAPP_RECIPIENT_PHONE.');
     return { sent: false, reason: 'not_configured' };
   }
 
-  const message = [
-    'Nova simulacao realizada na JB Ecosolar',
-    `ID: ${simulation.id}`,
-    `Conta mensal: R$ ${Number(simulation.valor_conta).toFixed(2)}`,
-    `Economia mensal: R$ ${Number(result.economia_mensal).toFixed(2)}`,
-    `Economia anual: R$ ${Number(result.economia_anual).toFixed(2)}`,
-    `Potencia estimada: ${Number(result.potencia_kwp).toFixed(2)} kWp`,
-  ].join('\n');
+  const windowAge = Date.now() - recipientLastInboundAt;
+  if (windowAge < 0 || windowAge >= customerServiceWindowMs) {
+    return { sent: false, reason: 'outside_customer_service_window' };
+  }
+
+  const message = 'Uma nova simulacao foi realizada na aplicacao JB Ecosolar.';
 
   const response = await fetch(`https://graph.facebook.com/${whatsappApiVersion}/${configuration.phoneNumberId}/messages`, {
     method: 'POST',
@@ -90,7 +92,12 @@ app.use(cors({
     callback(new Error('Origem não permitida.'));
   },
 }));
-app.use(express.json({ limit: '16kb' }));
+app.use(express.json({
+  limit: '16kb',
+  verify(req, res, buffer) {
+    req.rawBody = buffer;
+  },
+}));
 
 function isNonEmptyString(value, maxLength = 200) {
   return typeof value === 'string' && value.trim().length > 0 && value.trim().length <= maxLength;
@@ -168,6 +175,47 @@ app.get('/api/health', asyncHandler(async (req, res) => {
   return res.json({ ok: true, message: 'JB Ecosolar API funcionando' });
 }));
 
+app.get('/api/whatsapp/webhook', (req, res) => {
+  const mode = req.query['hub.mode'];
+  const verifyToken = req.query['hub.verify_token'];
+  const challenge = req.query['hub.challenge'];
+
+  if (mode === 'subscribe' && whatsappWebhookVerifyToken && verifyToken === whatsappWebhookVerifyToken) {
+    return res.status(200).send(challenge);
+  }
+
+  return res.sendStatus(403);
+});
+
+app.post('/api/whatsapp/webhook', (req, res) => {
+  if (!whatsappAppSecret || !req.rawBody) return res.sendStatus(503);
+
+  const signature = req.get('x-hub-signature-256') || '';
+  const expectedSignature = `sha256=${crypto.createHmac('sha256', whatsappAppSecret).update(req.rawBody).digest('hex')}`;
+  if (!safeEqual(signature, expectedSignature)) return res.sendStatus(401);
+
+  const configuration = getWhatsAppConfiguration();
+  if (configuration) {
+    for (const entry of req.body?.entry || []) {
+      for (const change of entry.changes || []) {
+        const value = change.value;
+        if (value?.metadata?.phone_number_id !== configuration.phoneNumberId) continue;
+
+        for (const message of value.messages || []) {
+          const sender = String(message.from || '').replace(/\D/g, '');
+          const timestamp = Number(message.timestamp) * 1000;
+          const age = Date.now() - timestamp;
+          if (sender === configuration.recipientPhone && Number.isFinite(timestamp) && age >= 0 && age < customerServiceWindowMs && timestamp > recipientLastInboundAt) {
+            recipientLastInboundAt = timestamp;
+          }
+        }
+      }
+    }
+  }
+
+  return res.sendStatus(200);
+});
+
 app.post('/api/simulacoes', asyncHandler(async (req, res) => {
   try {
     const input = req.body || {};
@@ -181,7 +229,7 @@ app.post('/api/simulacoes', asyncHandler(async (req, res) => {
     const simulation = await createSimulation({ ...input, ...result });
     let notification = { sent: false, reason: 'not_sent' };
     try {
-      notification = await notifyNewSimulation(simulation, result);
+      notification = await notifyNewSimulation(simulation);
     } catch (error) {
       console.error('Falha ao enviar notificacao de nova simulacao pelo WhatsApp:', error.message);
       notification = { sent: false, reason: 'provider_error' };
