@@ -10,15 +10,19 @@ export default function Home() {
     economia_mensal: 182,
     economia_anual: 2184,
     economia_projetada: 54600,
-    potencia_kwp: 4.5,
-    consumo_estimado: 350,
+    potencia_kwp: 2.91,
+    investimento_estimado: 12222,
+    consumo_estimado: 306,
+    prazo_pagamento: 12,
+    valor_pagamento_estimado: 1018.5,
   });
+  const [prazoPagamento, setPrazoPagamento] = useState(12);
   const [dashboard, setDashboard] = useState<Dashboard>({ totalSimulacoes: 0, totalLeads: 0, conversao: 0 });
   const [notificacao, setNotificacao] = useState("Simulação pronta para análise comercial.");
 
   const handleSimular = async () => {
     try {
-      const { result } = await api.createSimulation(valorConta);
+      const { result } = await api.createSimulation(valorConta, prazoPagamento);
       setResultadoExibido(result);
       setDashboard((previous) => ({ ...previous, totalSimulacoes: previous.totalSimulacoes + 1 }));
       setNotificacao("Simulação concluída com sucesso. O cliente pode solicitar proposta.");
@@ -94,6 +98,31 @@ export default function Home() {
               <span>Conta mensal</span>
               <strong>R$ {valorConta.toLocaleString("pt-BR")}</strong>
             </div>
+            <section className="payment-selection" aria-labelledby="payment-heading">
+              <h2 id="payment-heading">Opções de pagamento</h2>
+              <p>Escolha uma opção para incluir na simulação.</p>
+              <fieldset className="payment-options">
+                <legend className="visually-hidden">Selecione uma opção de pagamento</legend>
+                {[0, 12, 24, 36].map((term) => {
+                  const label = term === 0 ? "À vista" : `${term} parcelas`;
+                  return (
+                    <label className="payment-option" key={term}>
+                      <input
+                        type="radio"
+                        name="prazo-pagamento"
+                        value={term}
+                        checked={prazoPagamento === term}
+                        onChange={() => setPrazoPagamento(term)}
+                      />
+                      <span>
+                        <strong>{label}</strong>
+                        <small>{term === 0 ? "Pagamento único" : "Estimativa sem juros"}</small>
+                      </span>
+                    </label>
+                  );
+                })}
+              </fieldset>
+            </section>
             <div className="simulator-actions">
               <button type="button" onClick={handleSimular} className="simulator-action">Simular minha economia</button>
             </div>
@@ -116,7 +145,26 @@ export default function Home() {
                     <span>Economia acumulada</span>
                     <strong>R$ {resultadoExibido.economia_projetada.toLocaleString("pt-BR")}</strong>
                   </div>
+                  <div>
+                    <span>Investimento estimado</span>
+                    <strong>R$ {resultadoExibido.investimento_estimado.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong>
+                  </div>
                 </div>
+                <section className="payment-estimate" aria-labelledby="payment-result-heading">
+                  <h2 id="payment-result-heading">Resultado do pagamento</h2>
+                  {resultadoExibido.prazo_pagamento === prazoPagamento ? (
+                    <p className="payment-selected">
+                      {prazoPagamento === 0 ? "Valor estimado à vista" : `Parcela estimada em ${prazoPagamento}x`}: R$ {resultadoExibido.valor_pagamento_estimado.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                    </p>
+                  ) : (
+                    <p className="payment-selected" role="status">
+                      Opção alterada. Clique em Simular minha economia para recalcular o pagamento.
+                    </p>
+                  )}
+                  <p className="payment-disclaimer">
+                    Parcelamento apenas como referência matemática, sem juros ou taxas. Condições reais dependem da análise de crédito e da proposta comercial.
+                  </p>
+                </section>
                 <details className="simulation-methodology">
                   <summary>Como calculamos esta estimativa?</summary>
                   <p>

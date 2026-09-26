@@ -23,6 +23,7 @@ const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:3000').spli
 const adminUsername = process.env.ADMIN_USERNAME || (process.env.NODE_ENV === 'production' ? '' : 'admin');
 const adminPassword = process.env.ADMIN_PASSWORD || (process.env.NODE_ENV === 'production' ? '' : 'jb2025');
 const validLeadStatuses = new Set(['NOVO', 'CONTATADO', 'QUALIFICADO', 'PROPOSTA ENVIADA', 'CONTRATADO']);
+const validPaymentTerms = new Set([0, 12, 24, 36]);
 const failedAdminAttempts = new Map();
 
 if (process.env.NODE_ENV === 'production' && (!process.env.ADMIN_USERNAME || !process.env.ADMIN_PASSWORD)) {
@@ -122,7 +123,11 @@ app.post('/api/simulacoes', asyncHandler(async (req, res) => {
     const input = req.body || {};
     const validationError = validateFinitePositive(input.valor_conta, 'valor_conta');
     if (validationError) return res.status(400).json({ error: validationError });
-    const result = await calculateSimulation(input);
+    const prazoPagamento = input.prazo_pagamento ?? 12;
+    if (!validPaymentTerms.has(prazoPagamento)) {
+      return res.status(400).json({ error: 'prazo_pagamento deve ser 0, 12, 24 ou 36.' });
+    }
+    const result = await calculateSimulation({ ...input, prazo_pagamento: prazoPagamento });
     const simulation = await createSimulation({ ...input, ...result });
 
     res.status(201).json({ simulation, result });

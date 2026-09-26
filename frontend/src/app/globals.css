@@ -243,6 +243,115 @@ button {
   font-size: 1.05rem;
 }
 
+.result-grid div:last-child {
+  grid-column: 1 / -1;
+}
+
+.payment-selection,
+.payment-estimate {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+
+.payment-selection h2,
+.payment-estimate h2 {
+  font-size: 1.05rem;
+  margin-bottom: 5px;
+}
+
+.payment-selection > p,
+.payment-estimate > p {
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.payment-options {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  border: 0;
+  margin-top: 14px;
+}
+
+.payment-option {
+  display: flex !important;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fbfcff;
+  color: var(--text) !important;
+  font-size: 0.82rem !important;
+  font-weight: 400 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+  cursor: pointer;
+}
+
+.payment-option:has(input:checked) {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.payment-option:has(input:focus-visible) {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.payment-option input {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  accent-color: var(--primary);
+}
+
+.payment-option span,
+.payment-option strong,
+.payment-option small {
+  display: block;
+}
+
+.payment-option span {
+  min-width: 0;
+}
+
+.payment-option strong,
+.payment-option small {
+  overflow-wrap: anywhere;
+}
+
+.payment-option small {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.payment-estimate > .payment-selected {
+  margin-top: 12px;
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.payment-estimate > .payment-disclaimer {
+  margin-top: 6px;
+  font-size: 0.78rem;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .simulation-methodology {
   margin-top: 16px;
   border-top: 1px solid var(--border);
@@ -547,5 +656,9 @@ button {
 
   .metric-bar {
     grid-template-columns: 1fr;
+  }
+
+  .payment-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

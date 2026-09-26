@@ -14,7 +14,10 @@ export type SimulationResult = {
   economia_anual: number;
   economia_projetada: number;
   potencia_kwp: number;
+  investimento_estimado: number;
   consumo_estimado: number;
+  prazo_pagamento: number;
+  valor_pagamento_estimado: number;
 };
 
 export type Dashboard = {
@@ -50,8 +53,8 @@ function adminHeaders(username: string, password: string) {
 export const api = {
   createLead: (lead: Omit<Lead, "id" | "status">) =>
     request<{ lead: Lead }>("/api/leads", { method: "POST", body: JSON.stringify(lead) }),
-  createSimulation: (valor_conta: number) =>
-    request<{ result: SimulationResult }>("/api/simulacoes", { method: "POST", body: JSON.stringify({ valor_conta }) }),
+  createSimulation: (valor_conta: number, prazo_pagamento: number) =>
+    request<{ result: SimulationResult }>("/api/simulacoes", { method: "POST", body: JSON.stringify({ valor_conta, prazo_pagamento }) }),
   getDashboard: () => request<Dashboard>("/api/dashboard"),
   getLeads: (username: string, password: string) => request<Lead[]>("/api/leads", { headers: adminHeaders(username, password) }),
   updateLeadStatus: (id: number, status: string, username: string, password: string) =>

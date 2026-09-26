@@ -24,6 +24,7 @@ const memoryState = {
       economia_anual: 2184,
       economia_projetada: 54600,
       potencia_kwp: 4.5,
+      investimento_estimado: 18900,
       created_at: '2026-08-23T10:05:00.000Z',
     },
   ],
@@ -260,7 +261,10 @@ export async function calculateSimulation(input) {
       economia_anual: 0,
       economia_projetada: 0,
       potencia_kwp: 0,
+      investimento_estimado: 0,
       consumo_estimado: 0,
+      prazo_pagamento: Number(input.prazo_pagamento ?? 12),
+      valor_pagamento_estimado: 0,
     };
   }
 
@@ -271,10 +275,14 @@ export async function calculateSimulation(input) {
   const fatorPerdas = valores.fator_perdas || 0.9;
   const vidaUtilAnos = valores.vida_util_anos || 25;
   const percentualEconomia = valores.percentual_minimo_economia || 0.35;
+  const custoKwp = valores.custo_kwp || 4200;
+  const prazoPagamento = Number(input.prazo_pagamento ?? 12);
   const economiaMensal = valorConta * percentualEconomia;
   const economiaAnual = economiaMensal * 12;
   const consumoEstimado = Math.max(1, Math.round(valorConta / tarifa));
   const potenciaKwp = Math.max(0.1, Number((consumoEstimado / ((producaoMediaKwh / 12) * fatorPerdas)).toFixed(2)));
+  const investimentoEstimado = Number((potenciaKwp * custoKwp).toFixed(2));
+  const valorPagamentoEstimado = Number((investimentoEstimado / (prazoPagamento || 1)).toFixed(2));
   const economiaProjetada = economiaAnual * vidaUtilAnos;
 
   return {
@@ -282,6 +290,9 @@ export async function calculateSimulation(input) {
     economia_anual: Number(economiaAnual.toFixed(2)),
     economia_projetada: Number(economiaProjetada.toFixed(2)),
     potencia_kwp: Number(potenciaKwp.toFixed(2)),
+    investimento_estimado: investimentoEstimado,
     consumo_estimado: consumoEstimado,
+    prazo_pagamento: prazoPagamento,
+    valor_pagamento_estimado: valorPagamentoEstimado,
   };
 }

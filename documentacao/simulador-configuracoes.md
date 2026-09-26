@@ -11,6 +11,8 @@ flowchart LR
   C --> E[Consumo estimado]
   C --> F[Potencia estimada]
   C --> G[Economia mensal]
+  C --> J[Investimento estimado]
+  J --> K[Opcoes de pagamento e parcela estimada]
   G --> H[Economia anual]
   H --> I[Economia acumulada]
 ```
@@ -24,6 +26,8 @@ flowchart LR
 | Economia mensal | `valor da conta * percentual de economia` | Percentual de economia estimada |
 | Economia anual | `economia mensal * 12` | Percentual de economia estimada |
 | Economia acumulada | `economia anual * vida util` | Vida util |
+| Investimento estimado | `potencia estimada * custo por kWp` | Custo estimado por kWp |
+| Valor de pagamento estimado | `investimento estimado / quantidade de parcelas` (ou valor integral à vista) | Opção enviada na simulação (à vista, 12, 24 ou 36), sem juros ou taxas |
 
 ## Exemplo
 
@@ -47,4 +51,4 @@ O simulador calcula:
 
 ## Custo estimado por kWp
 
-Esse parametro esta disponivel para configuracao, mas nao e exibido no resultado atual. Ele pode ser utilizado futuramente para calcular o investimento estimado do projeto e o prazo de retorno.
+O custo por kWp e usado para estimar o investimento do projeto. As opções de pagamento exibidas dividem esse valor em 12, 24 ou 36 parcelas sem juros ou taxas, apenas como referência matemática; não representam condições de crédito ou uma proposta comercial.
