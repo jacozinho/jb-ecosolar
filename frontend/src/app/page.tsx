@@ -97,28 +97,6 @@ export default function Home() {
         <section className="metric-bar customer-metrics">
           <div>
             <span>Simulações</span>
-              {prazoPagamento > 0 && (
-                <div className="financing-selection">
-                  {opcoesFinanciamento.length > 0 ? (
-                    <>
-                      <label htmlFor="financiamento-opcao">Instituição e taxa mensal</label>
-                      <select
-                        id="financiamento-opcao"
-                        value={financiamentoId ?? ""}
-                        onChange={(event) => setFinanciamentoId(event.target.value ? Number(event.target.value) : null)}
-                      >
-                        {opcoesFinanciamento.map((option) => (
-                          <option key={option.id} value={option.id}>
-                            {option.instituicao} — {option.taxa_juros_mensal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}% a.m.
-                          </option>
-                        ))}
-                      </select>
-                    </>
-                  ) : (
-                    <p>Parcelamento indisponível no momento. As opções serão exibidas quando houver taxas cadastradas.</p>
-                  )}
-                </div>
-              )}
             <strong>{dashboard?.totalSimulacoes.toLocaleString("pt-BR") ?? "—"}</strong>
           </div>
           <div>
@@ -180,6 +158,28 @@ export default function Home() {
                   );
                 })}
               </fieldset>
+              {prazoPagamento > 0 && (
+                <div className="financing-selection">
+                  {opcoesFinanciamento.length > 0 ? (
+                    <>
+                      <label htmlFor="financiamento-opcao">Instituição e taxa mensal</label>
+                      <select
+                        id="financiamento-opcao"
+                        value={financiamentoId ?? ""}
+                        onChange={(event) => setFinanciamentoId(event.target.value ? Number(event.target.value) : null)}
+                      >
+                        {opcoesFinanciamento.map((option) => (
+                          <option key={option.id} value={option.id}>
+                            {option.instituicao} — {option.taxa_juros_mensal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}% a.m.
+                          </option>
+                        ))}
+                      </select>
+                    </>
+                  ) : (
+                    <p>Parcelamento indisponível no momento. As opções serão exibidas quando houver taxas cadastradas.</p>
+                  )}
+                </div>
+              )}
             </section>
             <div className="simulator-actions">
               <button type="button" onClick={handleSimular} className="simulator-action">Simular minha economia</button>
