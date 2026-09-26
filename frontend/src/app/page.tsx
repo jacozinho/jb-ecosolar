@@ -136,7 +136,19 @@ export default function Home() {
             </div>
             <section className="payment-selection" aria-labelledby="payment-heading">
               <h2 id="payment-heading">Opções de pagamento. </h2>
-              <p>Escolha uma opção para incluir na simulação. Confira Detalhes da simulação e pagamento para mais informações.</p>
+              <p>
+                Escolha uma opção para incluir na simulação. Confira o item{" "}
+                <a
+                  href="#detalhes-simulacao-pagamento"
+                  onClick={() => {
+                    const details = document.getElementById("detalhes-simulacao-pagamento");
+                    if (details instanceof HTMLDetailsElement) details.open = true;
+                  }}
+                >
+                  Detalhes da simulação e pagamento
+                </a>{" "}
+                para mais informações.
+              </p>
               <fieldset className="payment-options">
                 <legend className="visually-hidden">Selecione pagamento à vista ou parcelado</legend>
                 <label className="payment-option">
@@ -227,7 +239,7 @@ export default function Home() {
                     <strong>R$ {resultadoExibido.investimento_estimado.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong>
                   </div>
                 </div>
-                <details className="payment-estimate">
+                <details className="payment-estimate" id="detalhes-simulacao-pagamento">
                   <summary>Detalhes da simulação e pagamento</summary>
                   {resultadoExibido.prazo_pagamento === prazoPagamento && (prazoPagamento === 0 || resultadoExibido.financiamento_id === financiamentoId) ? (
                     <p className="payment-selected">
