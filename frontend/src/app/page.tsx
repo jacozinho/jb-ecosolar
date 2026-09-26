@@ -137,29 +137,47 @@ export default function Home() {
               <h2 id="payment-heading">Opções de pagamento</h2>
               <p>Escolha uma opção para incluir na simulação.</p>
               <fieldset className="payment-options">
-                <legend className="visually-hidden">Selecione uma opção de pagamento</legend>
-                {[0, 12, 24, 36].map((term) => {
-                  const label = term === 0 ? "À vista" : `${term} parcelas`;
-                  return (
-                    <label className="payment-option" key={term}>
-                      <input
-                        type="radio"
-                        name="prazo-pagamento"
-                        value={term}
-                        checked={prazoPagamento === term}
-                        disabled={term > 0 && opcoesFinanciamento.length === 0}
-                        onChange={() => setPrazoPagamento(term)}
-                      />
-                      <span>
-                        <strong>{label}</strong>
-                        <small>{term === 0 ? "Pagamento único" : opcoesFinanciamento.length > 0 ? "Taxa informada pela instituição" : "Indisponível sem taxa"}</small>
-                      </span>
-                    </label>
-                  );
-                })}
+                <legend className="visually-hidden">Selecione pagamento à vista ou parcelado</legend>
+                <label className="payment-option">
+                  <input
+                    type="radio"
+                    name="modo-pagamento"
+                    value="avista"
+                    checked={prazoPagamento === 0}
+                    onChange={() => setPrazoPagamento(0)}
+                  />
+                  <span>
+                    <strong>À vista</strong>
+                    <small>Pagamento único</small>
+                  </span>
+                </label>
+                <label className="payment-option">
+                  <input
+                    type="radio"
+                    name="modo-pagamento"
+                    value="parcelado"
+                    checked={prazoPagamento > 0}
+                    disabled={opcoesFinanciamento.length === 0}
+                    onChange={(event) => setPrazoPagamento(event.target.checked ? Math.max(prazoPagamento, 1) : 0)}
+                  />
+                  <span>
+                    <strong>Parcelamento</strong>
+                    <small>{opcoesFinanciamento.length > 0 ? "Taxa da instituição selecionada" : "Requer taxa cadastrada"}</small>
+                  </span>
+                </label>
               </fieldset>
               {prazoPagamento > 0 && (
                 <div className="financing-selection">
+                  <label htmlFor="prazo-pagamento">Quantidade de parcelas</label>
+                  <select
+                    id="prazo-pagamento"
+                    value={prazoPagamento}
+                    onChange={(event) => setPrazoPagamento(Number(event.target.value))}
+                  >
+                    {Array.from({ length: 36 }, (_, index) => index + 1).map((term) => (
+                      <option key={term} value={term}>{term} {term === 1 ? "parcela" : "parcelas"}</option>
+                    ))}
+                  </select>
                   {opcoesFinanciamento.length > 0 ? (
                     <>
                       <label htmlFor="financiamento-opcao">Instituição e taxa mensal</label>
