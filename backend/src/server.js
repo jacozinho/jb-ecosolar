@@ -258,6 +258,11 @@ app.get('/api/leads', requireAdmin, asyncHandler(async (req, res) => {
   return res.json(leads);
 }));
 
+app.get('/api/public/dashboard', asyncHandler(async (req, res) => {
+  const { totalSimulacoes, totalLeads, conversao } = await getDashboard();
+  return res.json({ totalSimulacoes, totalLeads, conversao });
+}));
+
 app.patch('/api/leads/:id', requireAdmin, asyncHandler(async (req, res) => {
   if (!validLeadStatuses.has(req.body?.status)) {
     return res.status(400).json({ error: 'Status inválido.' });

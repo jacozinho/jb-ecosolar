@@ -55,6 +55,7 @@ export const api = {
     request<{ lead: Lead }>("/api/leads", { method: "POST", body: JSON.stringify(lead) }),
   createSimulation: (valor_conta: number, prazo_pagamento: number) =>
     request<{ result: SimulationResult }>("/api/simulacoes", { method: "POST", body: JSON.stringify({ valor_conta, prazo_pagamento }) }),
+  getPublicDashboard: () => request<Dashboard>("/api/public/dashboard"),
   getDashboard: () => request<Dashboard>("/api/dashboard"),
   getLeads: (username: string, password: string) => request<Lead[]>("/api/leads", { headers: adminHeaders(username, password) }),
   updateLeadStatus: (id: number, status: string, username: string, password: string) =>

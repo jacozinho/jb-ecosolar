@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api, type Dashboard, type SimulationResult } from "@/lib/api";
 
 export default function Home() {
@@ -17,14 +17,29 @@ export default function Home() {
     valor_pagamento_estimado: 1018.5,
   });
   const [prazoPagamento, setPrazoPagamento] = useState(12);
-  const [dashboard, setDashboard] = useState<Dashboard>({ totalSimulacoes: 0, totalLeads: 0, conversao: 0 });
+  const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [notificacao, setNotificacao] = useState("Simulação pronta para análise comercial.");
+
+  useEffect(() => {
+    let active = true;
+    api.getPublicDashboard()
+      .then((data) => {
+        if (active) setDashboard(data);
+      })
+      .catch(() => {
+        if (active) setDashboard(null);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleSimular = async () => {
     try {
       const { result } = await api.createSimulation(valorConta, prazoPagamento);
       setResultadoExibido(result);
-      setDashboard((previous) => ({ ...previous, totalSimulacoes: previous.totalSimulacoes + 1 }));
+      api.getPublicDashboard().then(setDashboard).catch(() => setDashboard(null));
       setNotificacao("Simulação concluída com sucesso. O cliente pode solicitar proposta.");
     } catch {
       setNotificacao("Não foi possível realizar a simulação. Tente novamente.");
@@ -40,7 +55,7 @@ export default function Home() {
 
     try {
       await api.createLead(leadForm);
-      setDashboard((previous) => ({ ...previous, totalLeads: previous.totalLeads + 1 }));
+      api.getPublicDashboard().then(setDashboard).catch(() => setDashboard(null));
       setNotificacao(`Lead registrado com sucesso para ${leadForm.nome}.`);
       setLeadForm({ nome: "", telefone: "", email: "", cidade: "" });
     } catch {
@@ -62,15 +77,15 @@ export default function Home() {
         <section className="metric-bar customer-metrics">
           <div>
             <span>Simulações</span>
-            <strong>{dashboard.totalSimulacoes}</strong>
+            <strong>{dashboard?.totalSimulacoes.toLocaleString("pt-BR") ?? "—"}</strong>
           </div>
           <div>
             <span>Leads</span>
-            <strong>{dashboard.totalLeads}</strong>
+            <strong>{dashboard?.totalLeads.toLocaleString("pt-BR") ?? "—"}</strong>
           </div>
           <div>
             <span>Conversão</span>
-            <strong>{dashboard.conversao}%</strong>
+            <strong>{dashboard ? `${dashboard.conversao}%` : "—"}</strong>
           </div>
         </section>
 
