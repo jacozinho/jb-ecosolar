@@ -83,6 +83,10 @@ export default function Home() {
     }
   };
 
+  const resultadoPagamentoAtual = resultadoExibido &&
+    resultadoExibido.prazo_pagamento === prazoPagamento &&
+    (prazoPagamento === 0 || resultadoExibido.financiamento_id === financiamentoId);
+
   return (
     <main className="page-shell">
       <header className="brand-bar">
@@ -235,28 +239,32 @@ export default function Home() {
                     <strong>R$ {resultadoExibido.economia_projetada.toLocaleString("pt-BR")}</strong>
                   </div>
                   <div>
-                    <span>Investimento estimado</span>
+                    <span>Valor do sistema à vista</span>
                     <strong>R$ {resultadoExibido.investimento_estimado.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong>
+                    <small>Antes dos encargos de financiamento</small>
                   </div>
                 </div>
+                <section className="payment-summary" aria-live="polite" aria-label="Pagamento selecionado">
+                  {resultadoPagamentoAtual ? (
+                    <>
+                      <span className="payment-summary-label">
+                        {prazoPagamento === 0 ? "Pagamento à vista estimado" : `Parcela mensal estimada · ${prazoPagamento}x`}
+                      </span>
+                      <strong>R$ {resultadoExibido.valor_pagamento_estimado.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong>
+                      {prazoPagamento > 0 && (
+                        <span className="payment-summary-detail">
+                          Total em {prazoPagamento} parcelas: R$ {resultadoExibido.valor_total_pagamento_estimado.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} · {resultadoExibido.financiamento_instituicao}, {resultadoExibido.taxa_juros_mensal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}% a.m.
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <p className="payment-summary-pending" role="status">
+                      Seleção alterada. Clique em “Simular minha economia” para atualizar o valor do pagamento.
+                    </p>
+                  )}
+                </section>
                 <details className="payment-estimate" id="detalhes-simulacao-pagamento">
                   <summary>Detalhes da simulação e pagamento</summary>
-                  {resultadoExibido.prazo_pagamento === prazoPagamento && (prazoPagamento === 0 || resultadoExibido.financiamento_id === financiamentoId) ? (
-                    <p className="payment-selected">
-                      {prazoPagamento === 0
-                        ? `Valor estimado à vista: R$ ${resultadoExibido.valor_pagamento_estimado.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
-                        : `Parcela estimada em ${prazoPagamento}x com ${resultadoExibido.financiamento_instituicao}: R$ ${resultadoExibido.valor_pagamento_estimado.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
-                    </p>
-                  ) : (
-                    <p className="payment-selected" role="status">
-                      Opção alterada. Clique em Simular minha economia para recalcular o pagamento.
-                    </p>
-                  )}
-                  {prazoPagamento > 0 && resultadoExibido.prazo_pagamento === prazoPagamento && resultadoExibido.financiamento_id === financiamentoId && (
-                    <p className="payment-total">
-                      Taxa usada: {resultadoExibido.taxa_juros_mensal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}% a.m. · Total estimado: R$ {resultadoExibido.valor_total_pagamento_estimado.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                    </p>
-                  )}
                   <p className="payment-disclaimer">
                     A taxa mensal é cadastrada manualmente pelo administrador com base nas informações da instituição financeira e serve apenas como referência para esta simulação. O cálculo considera o valor financiado, a taxa informada e o prazo; não é uma proposta de crédito nem representa o CET. Não inclui IOF, tarifas, seguros ou entrada. Confirme a taxa vigente, o CET e as condições finais diretamente com a instituição antes de contratar.
                   </p>
