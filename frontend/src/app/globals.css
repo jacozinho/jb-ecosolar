@@ -87,33 +87,81 @@ button {
 }
 
 .hero-copy {
-  background: var(--panel);
-  border-radius: 24px;
-  border: 1px solid var(--border);
-  padding: 32px;
-  box-shadow: 0 10px 30px rgba(22, 61, 122, 0.06);
+  position: relative;
+  padding: 26px 18px 26px 8px;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .eyebrow {
-  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.74rem;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--primary);
-  margin-bottom: 18px;
+  color: var(--success);
+  margin-bottom: 22px;
+}
+
+.eyebrow::before {
+  content: "";
+  width: 28px;
+  height: 2px;
+  background: var(--accent);
 }
 
 .hero-copy h1 {
-  font-size: clamp(2.4rem, 4vw, 4rem);
-  line-height: 1.06;
-  margin-bottom: 16px;
+  max-width: 12ch;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 3.35rem;
+  font-weight: 500;
+  line-height: 1.04;
+  text-wrap: balance;
+  margin-bottom: 20px;
+}
+
+.hero-copy h1 span {
+  color: var(--success);
 }
 
 .subtitle {
-  font-size: 1.05rem;
+  max-width: 42ch;
+  font-size: 1rem;
   color: var(--muted);
-  max-width: 540px;
-  line-height: 1.6;
+  line-height: 1.7;
+}
+
+.subtitle strong {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.hero-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  align-self: flex-start;
+  margin-top: 24px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--accent);
+  color: var(--primary);
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.hero-link span {
+  color: var(--success);
+  font-size: 1.1rem;
+  transition: transform 0.2s ease;
+}
+
+.hero-link:hover span {
+  transform: translateY(3px);
 }
 
 .cta-row {
@@ -804,6 +852,15 @@ button {
 
   .client-module {
     padding: 16px;
+  }
+
+  .hero-copy {
+    padding: 24px 8px 12px;
+  }
+
+  .hero-copy h1 {
+    max-width: 14ch;
+    font-size: 2.65rem;
   }
 
   .admin-header h2 {

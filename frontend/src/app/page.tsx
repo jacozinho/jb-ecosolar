@@ -111,11 +111,12 @@ export default function Home() {
 
         <section className="hero">
           <div className="hero-copy">
-            <p className="eyebrow">JB ECOSOLAR</p>
-            <h1>Pague até 95% menos na sua conta de energia</h1>
+            <p className="eyebrow">ENERGIA SOLAR PARA SUA ROTINA</p>
+            <h1>Uma conta de energia mais leve começa <span>com o sol.</span></h1>
             <p className="subtitle">
-              Descubra quanto você pode economizar com um projeto fotovoltaico pensado para sua residência, empresa ou propriedade rural.
+              Simule sua economia com um projeto fotovoltaico para sua casa, empresa ou propriedade rural. Você pode reduzir em até <strong>95%</strong> o valor da conta.
             </p>
+            <a className="hero-link" href="#valor-conta">Conheça sua economia estimada <span aria-hidden="true">↓</span></a>
           </div>
 
           <div className="simulator-card">
