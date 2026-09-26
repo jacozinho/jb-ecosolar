@@ -258,7 +258,7 @@ export default function Home() {
                     </p>
                   )}
                   <p className="payment-disclaimer">
-                    A taxa é informada manualmente pelo administrador com base nos dados fornecidos pela instituição; não há integração bancária. Esta estimativa aplica juros compostos mensais e não necessariamente representa o CET: pode excluir IOF, tarifas, entrada e outras condições. Confirme a proposta, a taxa vigente e a aprovação diretamente com a instituição antes de contratar.
+                    A taxa mensal é cadastrada manualmente pelo administrador com base nas informações da instituição financeira e serve apenas como referência para esta simulação. O cálculo considera o valor financiado, a taxa informada e o prazo; não é uma proposta de crédito nem representa o CET. Não inclui IOF, tarifas, seguros ou entrada. Confirme a taxa vigente, o CET e as condições finais diretamente com a instituição antes de contratar.
                   </p>
                   <details className="simulation-methodology">
                     <summary>Como calculamos esta estimativa?</summary>
