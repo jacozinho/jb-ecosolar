@@ -3,6 +3,15 @@
 import { useEffect, useState } from "react";
 import { api, type Dashboard, type FinancingOption, type SimulationResult } from "@/lib/api";
 
+function calcularParcelaEstimada(valorFinanciado: number, parcelas: number, taxaMensalPercentual: number) {
+  if (parcelas <= 0) return valorFinanciado;
+  const taxaMensal = taxaMensalPercentual / 100;
+  const valorParcela = taxaMensal === 0
+    ? valorFinanciado / parcelas
+    : valorFinanciado * taxaMensal / (1 - (1 + taxaMensal) ** -parcelas);
+  return Number(valorParcela.toFixed(2));
+}
+
 export default function Home() {
   const [valorConta, setValorConta] = useState(520);
   const [leadForm, setLeadForm] = useState({ nome: "", telefone: "", email: "", cidade: "" });
@@ -86,6 +95,10 @@ export default function Home() {
   const resultadoPagamentoAtual = resultadoExibido &&
     resultadoExibido.prazo_pagamento === prazoPagamento &&
     (prazoPagamento === 0 || resultadoExibido.financiamento_id === financiamentoId);
+  const financiamentoSelecionado = opcoesFinanciamento.find((option) => option.id === financiamentoId);
+  const parcelaPreview = resultadoExibido && prazoPagamento > 0 && financiamentoSelecionado
+    ? calcularParcelaEstimada(resultadoExibido.investimento_estimado, prazoPagamento, financiamentoSelecionado.taxa_juros_mensal)
+    : null;
 
   return (
     <main className="page-shell">
@@ -257,9 +270,26 @@ export default function Home() {
                         </span>
                       )}
                     </>
+                  ) : prazoPagamento === 0 ? (
+                    <>
+                      <span className="payment-summary-label">Prévia · pagamento à vista</span>
+                      <strong>R$ {resultadoExibido.investimento_estimado.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong>
+                      <span className="payment-summary-detail">Valor do sistema estimado, antes dos encargos de financiamento.</span>
+                    </>
+                  ) : parcelaPreview !== null && financiamentoSelecionado ? (
+                    <>
+                      <span className="payment-summary-label">Prévia da parcela mensal · {prazoPagamento}x</span>
+                      <strong>R$ {parcelaPreview.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong>
+                      <span className="payment-summary-detail">
+                        Total estimado: R$ {(parcelaPreview * prazoPagamento).toLocaleString("pt-BR", { minimumFractionDigits: 2 })} · {financiamentoSelecionado.instituicao}, {financiamentoSelecionado.taxa_juros_mensal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}% a.m.
+                      </span>
+                      <span className="payment-summary-pending" role="status">
+                        Prévia baseada no valor do sistema exibido acima. Clique em “Simular minha economia” para atualizar com a conta atual e registrar a simulação.
+                      </span>
+                    </>
                   ) : (
                     <p className="payment-summary-pending" role="status">
-                      Seleção alterada. Clique em “Simular minha economia” para atualizar o valor do pagamento.
+                      Cadastre ou selecione uma taxa de financiamento para calcular a parcela.
                     </p>
                   )}
                 </section>
