@@ -3,8 +3,22 @@
 import { useEffect, useState } from "react";
 import { api, type Dashboard, type FinancingOption, type SimulationResult } from "@/lib/api";
 
+function parseCurrencyInput(value: string) {
+  const normalized = value.trim().replace(/^R\$\s*/i, "").replace(/\s/g, "");
+  if (!normalized) return null;
+
+  const usesCommaDecimal = normalized.includes(",");
+  const validFormat = usesCommaDecimal
+    ? /^(?:\d+|\d{1,3}(?:\.\d{3})+),\d{1,2}$/.test(normalized)
+    : /^\d+(?:\.\d{1,2})?$/.test(normalized);
+  if (!validFormat) return null;
+
+  const amount = Number(usesCommaDecimal ? normalized.replace(/\./g, "").replace(",", ".") : normalized);
+  return Number.isFinite(amount) && amount > 0 ? amount : null;
+}
+
 export default function Home() {
-  const [valorConta, setValorConta] = useState(520);
+  const [valorContaInput, setValorContaInput] = useState("520,00");
   const [leadForm, setLeadForm] = useState({ nome: "", telefone: "", email: "", cidade: "" });
   const [prazoPagamento, setPrazoPagamento] = useState(0);
   const [opcoesFinanciamento, setOpcoesFinanciamento] = useState<Omit<FinancingOption, "ativa" | "updated_at">[]>([]);
@@ -15,7 +29,9 @@ export default function Home() {
   const [salvandoSimulacao, setSalvandoSimulacao] = useState(false);
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [notificacao, setNotificacao] = useState("Simulação pronta para análise comercial.");
-  const previewKey = `${valorConta}:${prazoPagamento}:${financiamentoId ?? "avista"}`;
+  const valorConta = parseCurrencyInput(valorContaInput);
+  const valorContaInvalido = valorConta === null;
+  const previewKey = `${valorContaInput}:${prazoPagamento}:${financiamentoId ?? "avista"}`;
   const resultadoExibido = previa?.key === previewKey ? previa.result : null;
   const erroPreviaAtual = erroPrevia?.key === previewKey ? erroPrevia.message : null;
   const previaEmCarregamento = !resultadoExibido && !erroPreviaAtual && !(prazoPagamento > 0 && financiamentoId === null);
@@ -48,6 +64,7 @@ export default function Home() {
 
   useEffect(() => {
     let active = true;
+    if (valorConta === null) return;
     if (prazoPagamento > 0 && financiamentoId === null) return;
 
     const timer = window.setTimeout(() => {
@@ -67,6 +84,10 @@ export default function Home() {
   }, [valorConta, prazoPagamento, financiamentoId, previewKey]);
 
   const handleSimular = async () => {
+    if (valorConta === null) {
+      setNotificacao("Informe um valor de conta maior que R$ 0,00 para simular.");
+      return;
+    }
     if (prazoPagamento > 0 && financiamentoId === null) {
       setNotificacao("Selecione uma instituição financiadora para calcular as parcelas.");
       return;
@@ -144,20 +165,27 @@ export default function Home() {
           </div>
 
           <div className="simulator-card">
-            <label htmlFor="valor-conta">Valor médio da conta de energia</label>
-            <input
-              id="valor-conta"
-              type="range"
-              min={150}
-              max={2500}
-              step={10}
-              value={valorConta}
-              onChange={(event) => setValorConta(Number(event.target.value))}
-            />
-            <div className="price-box">
-              <span>Conta mensal</span>
-              <strong>R$ {valorConta.toLocaleString("pt-BR")}</strong>
+            <label htmlFor="valor-conta">Digite o valor da sua conta de energia</label>
+            <div className="bill-amount-field" aria-invalid={valorContaInvalido}>
+              <span aria-hidden="true">R$</span>
+              <input
+                id="valor-conta"
+                type="text"
+                inputMode="decimal"
+                autoComplete="off"
+                placeholder="Ex.: 520,00"
+                value={valorContaInput}
+                onChange={(event) => setValorContaInput(event.target.value)}
+                aria-invalid={valorContaInvalido}
+                aria-describedby="valor-conta-ajuda valor-conta-erro"
+              />
             </div>
+            <p className="bill-amount-help" id="valor-conta-ajuda">Informe o valor mensal que aparece na sua fatura.</p>
+            {valorContaInvalido && (
+              <p className="bill-amount-error" id="valor-conta-erro" role="status">
+                Digite um valor maior que R$ 0,00. Exemplo: 520,00.
+              </p>
+            )}
             <section className="payment-selection" aria-labelledby="payment-heading">
               <h2 id="payment-heading">Opções de pagamento. </h2>
               <p>
@@ -288,7 +316,7 @@ export default function Home() {
                   <details className="simulation-methodology">
                     <summary>Como calculamos esta estimativa?</summary>
                     <p>
-                      Com base em uma conta de R$ {valorConta.toLocaleString("pt-BR")}, estimamos um consumo de {resultadoExibido.consumo_estimado.toLocaleString("pt-BR")} kWh por mês e uma potência de {resultadoExibido.potencia_kwp.toFixed(2)} kWp para o sistema solar.
+                      Com base em uma conta de R$ {valorConta?.toLocaleString("pt-BR") ?? "—"}, estimamos um consumo de {resultadoExibido.consumo_estimado.toLocaleString("pt-BR")} kWh por mês e uma potência de {resultadoExibido.potencia_kwp.toFixed(2)} kWp para o sistema solar.
                     </p>
                     <p>
                       A economia considera a tarifa de energia, a produção solar média e as perdas técnicas do sistema. A proposta final depende da análise do local de instalação e do seu perfil de consumo.
