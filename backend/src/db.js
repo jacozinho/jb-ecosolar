@@ -10,6 +10,12 @@ const memoryState = {
       telefone: '(11) 99999-0001',
       email: 'joao@exemplo.com',
       cidade: 'São Paulo',
+      estado: 'SP',
+      tipo_imovel: 'Residencial',
+      concessionaria: '',
+      valor_conta: 520,
+      valor_investimento: 18900,
+      origem: '',
       status: 'NOVO',
       created_at: '2026-08-23T10:00:00.000Z',
     },
@@ -35,6 +41,9 @@ const memoryState = {
     { id: 4, parametro: 'custo_kwp', valor: 4200, descricao: 'Custo estimado por kWp' },
     { id: 5, parametro: 'vida_util_anos', valor: 25, descricao: 'Vida útil' },
     { id: 6, parametro: 'percentual_minimo_economia', valor: 0.35, descricao: 'Percentual de economia estimada' },
+    { id: 7, parametro: 'margem_seguranca', valor: 0.15, descricao: 'Margem de segurança do dimensionamento (0,15 = 15%)' },
+    { id: 8, parametro: 'potencia_painel_w', valor: 500, descricao: 'Potência de cada painel (W)' },
+    { id: 9, parametro: 'fator_inversor', valor: 0.7, descricao: 'Potência do inversor / potência instalada (kWp)' },
   ],
   opcoesFinanciamento: [],
   notificacoes: [],
@@ -42,6 +51,12 @@ const memoryState = {
 
 let databaseType = 'memory';
 let pool = null;
+
+const leadColumns = 'id, nome, telefone, email, cidade, estado, tipo_imovel, concessionaria, valor_conta, valor_investimento, origem, status, created_at';
+
+function normalizeLead(lead) {
+  return { ...lead, valor_conta: Number(lead.valor_conta || 0), valor_investimento: Number(lead.valor_investimento || 0) };
+}
 
 async function initializePostgres() {
   if (!process.env.DATABASE_URL) {
@@ -90,6 +105,21 @@ async function initializePostgres() {
         ativa BOOLEAN NOT NULL DEFAULT TRUE,
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
+      ALTER TABLE leads ADD COLUMN IF NOT EXISTS estado TEXT NOT NULL DEFAULT '';
+      ALTER TABLE leads ADD COLUMN IF NOT EXISTS tipo_imovel TEXT NOT NULL DEFAULT '';
+      ALTER TABLE leads ADD COLUMN IF NOT EXISTS concessionaria TEXT NOT NULL DEFAULT '';
+      ALTER TABLE leads ADD COLUMN IF NOT EXISTS valor_conta NUMERIC NOT NULL DEFAULT 0;
+      ALTER TABLE leads ADD COLUMN IF NOT EXISTS valor_investimento NUMERIC NOT NULL DEFAULT 0;
+      ALTER TABLE leads ADD COLUMN IF NOT EXISTS origem TEXT NOT NULL DEFAULT '';
+      ALTER TABLE simulacoes ADD COLUMN IF NOT EXISTS investimento_estimado NUMERIC NOT NULL DEFAULT 0;
+      ALTER TABLE simulacoes ADD COLUMN IF NOT EXISTS payback_meses INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE simulacoes ADD COLUMN IF NOT EXISTS geracao_mensal_kwh NUMERIC NOT NULL DEFAULT 0;
+      ALTER TABLE simulacoes ADD COLUMN IF NOT EXISTS quantidade_paineis INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE simulacoes ADD COLUMN IF NOT EXISTS potencia_inversor_kw NUMERIC NOT NULL DEFAULT 0;
+      ALTER TABLE simulacoes ADD COLUMN IF NOT EXISTS tipo_imovel TEXT NOT NULL DEFAULT '';
+      ALTER TABLE simulacoes ADD COLUMN IF NOT EXISTS estado TEXT NOT NULL DEFAULT '';
+      ALTER TABLE simulacoes ADD COLUMN IF NOT EXISTS cidade TEXT NOT NULL DEFAULT '';
+      ALTER TABLE simulacoes ADD COLUMN IF NOT EXISTS concessionaria TEXT NOT NULL DEFAULT '';
       ALTER TABLE simulacoes ADD COLUMN IF NOT EXISTS prazo_pagamento INTEGER NOT NULL DEFAULT 0;
       ALTER TABLE simulacoes ADD COLUMN IF NOT EXISTS financiamento_instituicao TEXT NOT NULL DEFAULT '';
       ALTER TABLE simulacoes ADD COLUMN IF NOT EXISTS taxa_juros_mensal NUMERIC NOT NULL DEFAULT 0;
@@ -101,7 +131,10 @@ async function initializePostgres() {
         ('fator_perdas', 0.25, 'Fator de perdas'),
         ('custo_kwp', 4200, 'Custo estimado por kWp'),
         ('vida_util_anos', 25, 'Vida útil'),
-        ('percentual_minimo_economia', 0.35, 'Percentual de economia estimada')
+        ('percentual_minimo_economia', 0.35, 'Percentual de economia estimada'),
+        ('margem_seguranca', 0.15, 'Margem de segurança do dimensionamento (0,15 = 15%)'),
+        ('potencia_painel_w', 500, 'Potência de cada painel (W)'),
+        ('fator_inversor', 0.7, 'Potência do inversor / potência instalada (kWp)')
       ON CONFLICT (parametro) DO NOTHING;
     `);
     databaseType = 'postgres';
@@ -167,8 +200,8 @@ export async function getDashboard() {
 
 export async function getLeads() {
   if (databaseType === 'postgres') {
-    const { rows } = await pool.query('SELECT id, nome, telefone, email, cidade, status, created_at FROM leads ORDER BY created_at DESC');
-    return rows;
+    const { rows } = await pool.query(`SELECT ${leadColumns} FROM leads ORDER BY created_at DESC`);
+    return rows.map(normalizeLead);
   }
 
   return [...memoryState.leads];
@@ -179,7 +212,9 @@ export async function getSimulacoes() {
     const { rows } = await pool.query(
       `SELECT id, valor_conta, economia_mensal, economia_anual, potencia_kwp,
               prazo_pagamento, financiamento_instituicao, taxa_juros_mensal,
-              valor_pagamento_estimado, valor_total_pagamento_estimado, created_at
+              valor_pagamento_estimado, valor_total_pagamento_estimado, investimento_estimado,
+              payback_meses, geracao_mensal_kwh, quantidade_paineis, potencia_inversor_kw,
+              tipo_imovel, estado, cidade, concessionaria, lead_id, created_at
        FROM simulacoes
        ORDER BY created_at DESC
        LIMIT 100`,
@@ -193,10 +228,15 @@ export async function getSimulacoes() {
 export async function createLead(payload) {
   if (databaseType === 'postgres') {
     const { rows } = await pool.query(
-      'INSERT INTO leads (nome, telefone, email, cidade) VALUES ($1, $2, $3, $4) RETURNING id, nome, telefone, email, cidade, status, created_at',
-      [payload.nome, payload.telefone, payload.email || '', payload.cidade || ''],
+      `INSERT INTO leads (nome, telefone, email, cidade, estado, tipo_imovel, concessionaria, valor_conta, valor_investimento, origem)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING ${leadColumns}`,
+      [
+        payload.nome, payload.telefone, payload.email || '', payload.cidade || '', payload.estado || '',
+        payload.tipo_imovel || '', payload.concessionaria || '', payload.valor_conta || 0,
+        payload.valor_investimento || 0, payload.origem || '',
+      ],
     );
-    return rows[0];
+    return normalizeLead(rows[0]);
   }
 
   const lead = {
@@ -205,6 +245,12 @@ export async function createLead(payload) {
     telefone: payload.telefone,
     email: payload.email || '',
     cidade: payload.cidade || '',
+    estado: payload.estado || '',
+    tipo_imovel: payload.tipo_imovel || '',
+    concessionaria: payload.concessionaria || '',
+    valor_conta: Number(payload.valor_conta || 0),
+    valor_investimento: Number(payload.valor_investimento || 0),
+    origem: payload.origem || '',
     status: 'NOVO',
     created_at: new Date().toISOString(),
   };
@@ -217,10 +263,10 @@ export async function createLead(payload) {
 export async function updateLeadStatus(id, status) {
   if (databaseType === 'postgres') {
     const { rows } = await pool.query(
-      'UPDATE leads SET status = $1 WHERE id = $2 RETURNING id, nome, telefone, email, cidade, status, created_at',
+      `UPDATE leads SET status = $1 WHERE id = $2 RETURNING ${leadColumns}`,
       [status, id],
     );
-    return rows[0] || null;
+    return rows[0] ? normalizeLead(rows[0]) : null;
   }
 
   const lead = memoryState.leads.find((item) => item.id === Number(id));
@@ -324,11 +370,15 @@ export async function createSimulation(payload) {
       `INSERT INTO simulacoes (
          lead_id, valor_conta, consumo_estimado, economia_mensal, economia_anual,
          economia_projetada, potencia_kwp, prazo_pagamento, financiamento_instituicao,
-         taxa_juros_mensal, valor_pagamento_estimado, valor_total_pagamento_estimado
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+         taxa_juros_mensal, valor_pagamento_estimado, valor_total_pagamento_estimado,
+         investimento_estimado, payback_meses, geracao_mensal_kwh, quantidade_paineis,
+         potencia_inversor_kw, tipo_imovel, estado, cidade, concessionaria
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
        RETURNING id, lead_id, valor_conta, consumo_estimado, economia_mensal, economia_anual,
          economia_projetada, potencia_kwp, prazo_pagamento, financiamento_instituicao,
-         taxa_juros_mensal, valor_pagamento_estimado, valor_total_pagamento_estimado, created_at`,
+         taxa_juros_mensal, valor_pagamento_estimado, valor_total_pagamento_estimado,
+         investimento_estimado, payback_meses, geracao_mensal_kwh, quantidade_paineis,
+         potencia_inversor_kw, tipo_imovel, estado, cidade, concessionaria, created_at`,
       [
         payload.lead_id || null,
         payload.valor_conta,
@@ -342,6 +392,15 @@ export async function createSimulation(payload) {
         payload.taxa_juros_mensal,
         payload.valor_pagamento_estimado,
         payload.valor_total_pagamento_estimado,
+        payload.investimento_estimado,
+        payload.payback_meses,
+        payload.geracao_mensal_kwh,
+        payload.quantidade_paineis,
+        payload.potencia_inversor_kw,
+        payload.tipo_imovel || '',
+        payload.estado || '',
+        payload.cidade || '',
+        payload.concessionaria || '',
       ],
     );
     return rows[0];
@@ -361,6 +420,15 @@ export async function createSimulation(payload) {
     taxa_juros_mensal: Number(payload.taxa_juros_mensal || 0),
     valor_pagamento_estimado: Number(payload.valor_pagamento_estimado || 0),
     valor_total_pagamento_estimado: Number(payload.valor_total_pagamento_estimado || 0),
+    investimento_estimado: Number(payload.investimento_estimado || 0),
+    payback_meses: Number(payload.payback_meses || 0),
+    geracao_mensal_kwh: Number(payload.geracao_mensal_kwh || 0),
+    quantidade_paineis: Number(payload.quantidade_paineis || 0),
+    potencia_inversor_kw: Number(payload.potencia_inversor_kw || 0),
+    tipo_imovel: payload.tipo_imovel || '',
+    estado: payload.estado || '',
+    cidade: payload.cidade || '',
+    concessionaria: payload.concessionaria || '',
     created_at: new Date().toISOString(),
   };
 
@@ -377,6 +445,13 @@ export async function calculateSimulation(input, financingOption = null) {
       economia_projetada: 0,
       vida_util_anos: 25,
       potencia_kwp: 0,
+      quantidade_paineis: 0,
+      potencia_painel_w: 0,
+      potencia_inversor_kw: 0,
+      geracao_mensal_kwh: 0,
+      margem_seguranca: 0,
+      payback_meses: 0,
+      nova_conta_estimada: 0,
       investimento_estimado: 0,
       consumo_estimado: 0,
       prazo_pagamento: Number(input.prazo_pagamento ?? 12),
@@ -401,8 +476,16 @@ export async function calculateSimulation(input, financingOption = null) {
   const economiaMensal = valorConta * percentualEconomia;
   const economiaAnual = economiaMensal * 12;
   const consumoEstimado = Math.max(1, Math.round(valorConta / tarifa));
-  const potenciaKwp = Math.max(0.1, Number((consumoEstimado / ((producaoMediaKwh / 12) * fatorPerdas)).toFixed(2)));
+  const potenciaBaseKwp = consumoEstimado / ((producaoMediaKwh / 12) * fatorPerdas);
+  const potenciaPainelW = valores.potencia_painel_w || 500;
+  const margemSeguranca = valores.margem_seguranca ?? 0.15;
+  const quantidadePaineis = Math.max(1, Math.ceil((potenciaBaseKwp * (1 + margemSeguranca) * 1000) / potenciaPainelW));
+  const potenciaKwp = (quantidadePaineis * potenciaPainelW) / 1000;
+  const potenciaInversorKw = Math.max(1, Math.round(potenciaKwp * (valores.fator_inversor || 0.7)));
+  const geracaoMensalKwh = Math.round(potenciaKwp * (producaoMediaKwh / 12) * fatorPerdas);
   const investimentoEstimado = Number((potenciaKwp * custoKwp).toFixed(2));
+  const paybackMeses = economiaMensal > 0 ? Math.ceil(investimentoEstimado / economiaMensal) : 0;
+  const novaContaEstimada = Math.max(0, valorConta - economiaMensal);
   const taxaMensalDecimal = taxaJurosMensal / 100;
   const valorPagamentoEstimado = Number((prazoPagamento === 0
     ? investimentoEstimado
@@ -418,6 +501,13 @@ export async function calculateSimulation(input, financingOption = null) {
     economia_projetada: Number(economiaProjetada.toFixed(2)),
     vida_util_anos: vidaUtilAnos,
     potencia_kwp: Number(potenciaKwp.toFixed(2)),
+    quantidade_paineis: quantidadePaineis,
+    potencia_painel_w: potenciaPainelW,
+    potencia_inversor_kw: potenciaInversorKw,
+    geracao_mensal_kwh: geracaoMensalKwh,
+    margem_seguranca: margemSeguranca,
+    payback_meses: paybackMeses,
+    nova_conta_estimada: Number(novaContaEstimada.toFixed(2)),
     investimento_estimado: investimentoEstimado,
     consumo_estimado: consumoEstimado,
     prazo_pagamento: prazoPagamento,

@@ -1003,3 +1003,26 @@ button {
     text-align: left;
   }
 }
+
+.brand-company { margin-left: 12px; color: var(--primary); }
+
+.proposal-fields { display: grid; gap: 6px; border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin: 12px 0; }
+.proposal-fields legend { font-weight: 700; padding: 0 6px; }
+.proposal-fields input, .proposal-fields select { padding: 8px; border: 1px solid var(--border); border-radius: 6px; font: inherit; }
+
+.proposal { margin-top: 24px; }
+.proposal h3 { margin: 16px 0 6px; }
+.proposal-subtitle { color: var(--muted); }
+.proposal-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
+.simulator-action.secondary { background: var(--panel); color: var(--primary); border: 1px solid var(--primary); }
+
+.pipeline { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(220px, 1fr); gap: 12px; overflow-x: auto; }
+.pipeline-column { background: var(--panel-alt); border-radius: 8px; padding: 10px; }
+.pipeline-column h3 { margin: 0 0 4px; font-size: 0.95rem; }
+.pipeline-total { color: var(--muted); font-size: 0.85rem; }
+.pipeline-card { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 8px; margin-top: 8px; display: grid; gap: 2px; font-size: 0.9rem; }
+
+@media print {
+  .top-nav, .brand-bar, .metric-bar, .hero, .content-grid, .proposal-actions { display: none !important; }
+  .proposal { box-shadow: none; border: none; margin: 0; }
+}

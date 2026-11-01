@@ -10,6 +10,9 @@ function formatDateTime(value?: string) {
   return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString("pt-BR");
 }
 
+const pipelineStages = ["NOVO", "CONTATADO", "QUALIFICADO", "PROPOSTA ENVIADA", "CONTRATADO"];
+const money = (value?: number) => `R$ ${Number(value || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
+
 export default function AdminPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [simulations, setSimulations] = useState<SimulationRecord[]>([]);
@@ -224,12 +227,42 @@ export default function AdminPage() {
             </div>
           </div>
 
+          <section className="panel admin-panel">
+            <div className="admin-header">
+              <span>CRM</span>
+              <h2>Pipeline de vendas</h2>
+            </div>
+            <div className="pipeline">
+              {pipelineStages.map((stage) => {
+                const stageLeads = leads.filter((lead) => lead.status === stage);
+                return (
+                  <div className="pipeline-column" key={stage}>
+                    <h3>{stage} ({stageLeads.length})</h3>
+                    <span className="pipeline-total">{money(stageLeads.reduce((sum, lead) => sum + Number(lead.valor_investimento || 0), 0))}</span>
+                    {stageLeads.map((lead) => (
+                      <div className="pipeline-card" key={lead.id}>
+                        <strong>{lead.nome}</strong>
+                        <span>{lead.cidade || "—"}{lead.estado ? `/${lead.estado}` : ""}</span>
+                        <span>Conta: {money(lead.valor_conta)} · {lead.concessionaria || "—"}</span>
+                        <span>Oportunidade: {money(lead.valor_investimento)}</span>
+                        {lead.origem && <span>Origem: {lead.origem}</span>}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
           <div className="panel admin-panel">
             <table>
               <thead>
                 <tr>
                   <th>Cliente</th>
                   <th>WhatsApp</th>
+                  <th>Cidade</th>
+                  <th>Conta / concessionária</th>
+                  <th>Oportunidade</th>
                   <th>Status</th>
                   <th>Data/hora da proposta</th>
                   <th>Ação</th>
@@ -240,6 +273,9 @@ export default function AdminPage() {
                   <tr key={lead.id}>
                     <td>{lead.nome}</td>
                     <td>{lead.telefone}</td>
+                    <td>{lead.cidade || "—"}</td>
+                    <td>{money(lead.valor_conta)} · {lead.concessionaria || "—"}</td>
+                    <td>{money(lead.valor_investimento)}</td>
                     <td>{lead.status}</td>
                     <td>{formatDateTime(lead.created_at)}</td>
                     <td>

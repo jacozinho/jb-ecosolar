@@ -53,3 +53,20 @@ O simulador calcula:
 ## Custo estimado por kWp
 
 O custo por kWp e usado para estimar o investimento do projeto. As opções de pagamento exibidas dividem esse valor em 12, 24 ou 36 parcelas sem juros ou taxas, apenas como referência matemática; não representam condições de crédito ou uma proposta comercial.
+
+## Proposta comercial (campos adicionais)
+
+| Resultado | Formula | Configuracoes usadas |
+| --- | --- | --- |
+| Quantidade de paineis | `ceil(potencia estimada * (1 + margem) * 1000 / potencia do painel)` | Margem de seguranca (0,15), potencia do painel (500 W) |
+| Potencia instalada | `paineis * potencia do painel / 1000` | Potencia do painel |
+| Inversor String | `round(potencia instalada * fator do inversor)` kW | Fator do inversor (0,7) |
+| Geracao mensal | `potencia instalada * (producao media / 12) * fator de perdas` | Producao media, fator de perdas |
+| Payback | `ceil(investimento / economia mensal)` meses | Custo por kWp, percentual de economia |
+| Fatura com energia solar | `valor da conta - economia mensal` | Percentual de economia |
+
+A simulacao exige tipo de imovel, estado, cidade, concessionaria, nome, e-mail e WhatsApp; cria o lead (com valor da conta e valor da oportunidade) exibido no pipeline do painel administrativo. Se `CRM_WEBHOOK_URL` estiver definido no backend, cada novo lead e enviado por POST a esse endereco.
+
+## Link personalizado
+
+A pagina do cliente aceita `?empresa=Nome&cor=RRGGBB` para exibir o nome e a cor da empresa; o nome e gravado como origem do lead. `NEXT_PUBLIC_WHATSAPP_NUMBER` define o destino do botao "Contratar Agora".

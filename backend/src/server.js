@@ -34,7 +34,20 @@ const whatsappApiVersion = process.env.WHATSAPP_API_VERSION || 'v23.0';
 const whatsappWebhookVerifyToken = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN;
 const whatsappAppSecret = process.env.WHATSAPP_APP_SECRET;
 const customerServiceWindowMs = 24 * 60 * 60 * 1000;
+const crmWebhookUrl = process.env.CRM_WEBHOOK_URL;
+const validPropertyTypes = new Set(['Residencial', 'Comercial', 'Industrial', 'Rural']);
 let recipientLastInboundAt = 0;
+
+async function notifyCrm(lead, simulation) {
+  if (!crmWebhookUrl) return;
+  const response = await fetch(crmWebhookUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ event: 'novo_lead', lead, simulation }),
+    signal: AbortSignal.timeout(5000),
+  });
+  if (!response.ok) throw new Error(`CRM retornou ${response.status}`);
+}
 
 function getWhatsAppConfiguration() {
   const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
@@ -121,6 +134,17 @@ function validateLead(payload) {
     return 'Cidade inválida.';
   }
 
+  return null;
+}
+
+function validateProposalContext(input) {
+  if (!isNonEmptyString(input.nome, 120) || !isNonEmptyString(input.telefone, 40)) return 'Informe nome completo e WhatsApp.';
+  if (!isNonEmptyString(input.email, 160) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email)) return 'Informe um e-mail válido.';
+  if (!validPropertyTypes.has(input.tipo_imovel)) return 'Selecione o tipo de imóvel.';
+  if (!/^[A-Za-z]{2}$/.test(input.estado || '')) return 'Selecione o estado.';
+  if (!isNonEmptyString(input.cidade, 120)) return 'Informe a cidade.';
+  if (!isNonEmptyString(input.concessionaria, 120)) return 'Informe a concessionária de energia.';
+  if (input.origem !== undefined && (typeof input.origem !== 'string' || input.origem.length > 80)) return 'Origem inválida.';
   return null;
 }
 
@@ -247,7 +271,34 @@ app.post('/api/simulacoes', asyncHandler(async (req, res) => {
       if (!financingOption) return res.status(400).json({ error: 'A opção de financiamento selecionada não está disponível.' });
     }
     const result = await calculateSimulation({ ...input, prazo_pagamento: prazoPagamento }, financingOption);
-    const simulation = await createSimulation({ ...input, ...result });
+    const contextError = validateProposalContext(input);
+    if (contextError) return res.status(400).json({ error: contextError });
+    const lead = await createLead({
+      nome: input.nome.trim(),
+      telefone: input.telefone.trim(),
+      email: input.email.trim(),
+      cidade: input.cidade.trim(),
+      estado: input.estado.toUpperCase(),
+      tipo_imovel: input.tipo_imovel,
+      concessionaria: input.concessionaria.trim(),
+      valor_conta: input.valor_conta,
+      valor_investimento: result.investimento_estimado,
+      origem: (input.origem || '').trim(),
+    });
+    const simulation = await createSimulation({
+      lead_id: lead.id,
+      valor_conta: input.valor_conta,
+      tipo_imovel: input.tipo_imovel,
+      estado: lead.estado,
+      cidade: lead.cidade,
+      concessionaria: lead.concessionaria,
+      ...result,
+    });
+    try {
+      await notifyCrm(lead, simulation);
+    } catch (error) {
+      console.error('Falha ao enviar lead ao CRM:', error.message);
+    }
     let notification = { sent: false, reason: 'not_sent' };
     try {
       notification = await notifyNewSimulation(simulation);
@@ -256,7 +307,7 @@ app.post('/api/simulacoes', asyncHandler(async (req, res) => {
       notification = { sent: false, reason: 'provider_error' };
     }
 
-    res.status(201).json({ simulation, result, notification });
+    res.status(201).json({ simulation, result, lead, notification });
   } catch (error) {
     res.status(500).json({ error: 'Erro ao processar a simulação' });
   }
@@ -290,7 +341,7 @@ app.post('/api/leads', asyncHandler(async (req, res) => {
     const input = req.body || {};
     const validationError = validateLead(input);
     if (validationError) return res.status(400).json({ error: validationError });
-    const lead = await createLead(input);
+    const lead = await createLead({ nome: input.nome, telefone: input.telefone, email: input.email, cidade: input.cidade });
     res.status(201).json({ lead });
   } catch (error) {
     res.status(500).json({ error: 'Erro ao registrar lead' });

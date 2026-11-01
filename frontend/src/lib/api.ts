@@ -6,8 +6,25 @@ export type Lead = {
   telefone: string;
   email?: string;
   cidade?: string;
+  estado?: string;
+  tipo_imovel?: string;
+  concessionaria?: string;
+  valor_conta?: number;
+  valor_investimento?: number;
+  origem?: string;
   status: string;
   created_at: string;
+};
+
+export type ProposalContext = {
+  nome: string;
+  email: string;
+  telefone: string;
+  tipo_imovel: string;
+  estado: string;
+  cidade: string;
+  concessionaria: string;
+  origem?: string;
 };
 
 export type SimulationResult = {
@@ -16,6 +33,13 @@ export type SimulationResult = {
   economia_projetada: number;
   vida_util_anos: number;
   potencia_kwp: number;
+  quantidade_paineis: number;
+  potencia_painel_w: number;
+  potencia_inversor_kw: number;
+  geracao_mensal_kwh: number;
+  margem_seguranca: number;
+  payback_meses: number;
+  nova_conta_estimada: number;
   investimento_estimado: number;
   consumo_estimado: number;
   prazo_pagamento: number;
@@ -58,6 +82,12 @@ export type SimulationRecord = {
   taxa_juros_mensal: number;
   valor_pagamento_estimado: number;
   valor_total_pagamento_estimado: number;
+  tipo_imovel?: string;
+  estado?: string;
+  cidade?: string;
+  concessionaria?: string;
+  investimento_estimado?: number;
+  payback_meses?: number;
   created_at: string;
 };
 
@@ -89,8 +119,8 @@ export const api = {
     request<{ lead: Lead }>("/api/leads", { method: "POST", body: JSON.stringify(lead) }),
   previewSimulation: (valor_conta: number, prazo_pagamento: number, financiamento_id: number | null) =>
     request<{ result: SimulationResult }>("/api/simulacoes/preview", { method: "POST", body: JSON.stringify({ valor_conta, prazo_pagamento, financiamento_id }) }),
-  createSimulation: (valor_conta: number, prazo_pagamento: number, financiamento_id: number | null) =>
-    request<{ simulation: SimulationRecord; result: SimulationResult }>("/api/simulacoes", { method: "POST", body: JSON.stringify({ valor_conta, prazo_pagamento, financiamento_id }) }),
+  createSimulation: (valor_conta: number, prazo_pagamento: number, financiamento_id: number | null, context: ProposalContext) =>
+    request<{ simulation: SimulationRecord; result: SimulationResult; lead: Lead }>("/api/simulacoes", { method: "POST", body: JSON.stringify({ valor_conta, prazo_pagamento, financiamento_id, ...context }) }),
   getPublicDashboard: () => request<Dashboard>("/api/public/dashboard"),
   getPublicFinancingOptions: () => request<Omit<FinancingOption, "ativa" | "updated_at">[]>("/api/public/financiamentos"),
   getDashboard: (username: string, password: string) =>
